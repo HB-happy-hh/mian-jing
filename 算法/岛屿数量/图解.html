@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>200. 岛屿数量 - DFS 动态图解</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=ZCOOL+XiaoWei&family=JetBrains+Mono:wght@400;700&display=swap');
+
+  :root {
+    --ocean: #0a1628;
+    --deep: #0d2137;
+    --water: #1a4a6b;
+    --water-light: #2a6fa8;
+    --land: #c8a84b;
+    --land-light: #f0c96b;
+    --visited: #e05c3a;
+    --visited-light: #ff8060;
+    --current: #50e3c2;
+    --island-colors: #e74c8b, #8b5cf6, #f59e0b, #10b981, #ef4444;
+    --text: #e8f4fd;
+    --accent: #50e3c2;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--ocean);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* 海浪背景 */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: 
+      radial-gradient(ellipse at 20% 50%, rgba(26,74,107,0.3) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, rgba(80,227,194,0.05) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 24px;
+  }
+
+  h1 {
+    font-family: 'ZCOOL XiaoWei', serif;
+    font-size: 2.4rem;
+    text-align: center;
+    color: var(--accent);
+    letter-spacing: 4px;
+    margin-bottom: 6px;
+    text-shadow: 0 0 30px rgba(80,227,194,0.4);
+  }
+  .subtitle {
+    text-align: center;
+    color: rgba(232,244,253,0.5);
+    font-size: 0.85rem;
+    margin-bottom: 40px;
+    letter-spacing: 2px;
+  }
+
+  /* 预设选择 */
+  .preset-bar {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+  }
+  .preset-btn {
+    padding: 8px 20px;
+    border-radius: 20px;
+    border: 1px solid rgba(80,227,194,0.3);
+    background: rgba(80,227,194,0.05);
+    color: var(--accent);
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    transition: all 0.2s;
+    letter-spacing: 1px;
+  }
+  .preset-btn:hover, .preset-btn.active {
+    background: rgba(80,227,194,0.15);
+    border-color: var(--accent);
+    box-shadow: 0 0 12px rgba(80,227,194,0.2);
+  }
+
+  /* 主体布局 */
+  .main-layout {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 28px;
+    align-items: start;
+  }
+
+  /* 网格区域 */
+  .grid-section {
+    background: rgba(13,33,55,0.8);
+    border: 1px solid rgba(80,227,194,0.15);
+    border-radius: 16px;
+    padding: 28px;
+    backdrop-filter: blur(10px);
+  }
+
+  .grid-wrapper {
+    display: flex;
+    justify-content: center;
+    margin: 20px 0;
+  }
+
+  #grid-container {
+    display: inline-grid;
+    gap: 4px;
+    padding: 16px;
+    background: rgba(10,22,40,0.9);
+    border-radius: 12px;
+    border: 1px solid rgba(26,74,107,0.6);
+  }
+
+  .cell {
+    width: 58px;
+    height: 58px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    user-select: none;
+    border: 2px solid transparent;
+  }
+
+  .cell.water {
+    background: linear-gradient(135deg, #0d2a45, #1a4a6b);
+    color: rgba(42,111,168,0.6);
+    border-color: rgba(42,111,168,0.2);
+  }
+  .cell.water::after {
+    content: '〜';
+    position: absolute;
+    font-size: 0.6rem;
+    opacity: 0.3;
+    bottom: 4px;
+    right: 4px;
+  }
+
+  .cell.land {
+    background: linear-gradient(135deg, #8b6914, #c8a84b);
+    color: #fff8e7;
+    border-color: rgba(240,201,107,0.4);
+    box-shadow: 0 2px 8px rgba(200,168,75,0.3);
+  }
+
+  .cell.current {
+    background: linear-gradient(135deg, #00b894, #50e3c2);
+    color: #fff;
+    border-color: var(--accent);
+    transform: scale(1.15);
+    box-shadow: 0 0 20px rgba(80,227,194,0.6), 0 0 40px rgba(80,227,194,0.2);
+    z-index: 10;
+  }
+
+  .cell.island-0 { background: linear-gradient(135deg, #c0195e, #e74c8b); color: #fff; border-color: rgba(231,76,139,0.5); }
+  .cell.island-1 { background: linear-gradient(135deg, #5b21b6, #8b5cf6); color: #fff; border-color: rgba(139,92,246,0.5); }
+  .cell.island-2 { background: linear-gradient(135deg, #b45309, #f59e0b); color: #fff; border-color: rgba(245,158,11,0.5); }
+  .cell.island-3 { background: linear-gradient(135deg, #065f46, #10b981); color: #fff; border-color: rgba(16,185,129,0.5); }
+  .cell.island-4 { background: linear-gradient(135deg, #991b1b, #ef4444); color: #fff; border-color: rgba(239,68,68,0.5); }
+
+  .cell.scanning {
+    border-color: rgba(255,255,255,0.5);
+    box-shadow: 0 0 8px rgba(255,255,255,0.2);
+  }
+
+  /* 坐标轴 */
+  .coord-label {
+    text-align: center;
+    color: rgba(232,244,253,0.3);
+    font-size: 0.65rem;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+
+  /* 右侧面板 */
+  .side-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .panel-card {
+    background: rgba(13,33,55,0.8);
+    border: 1px solid rgba(80,227,194,0.15);
+    border-radius: 12px;
+    padding: 20px;
+    backdrop-filter: blur(10px);
+  }
+
+  .panel-title {
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    color: rgba(232,244,253,0.4);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+
+  /* 岛屿计数 */
+  .island-count {
+    font-size: 3.5rem;
+    font-weight: 700;
+    color: var(--accent);
+    text-align: center;
+    text-shadow: 0 0 30px rgba(80,227,194,0.5);
+    line-height: 1;
+    margin: 8px 0;
+  }
+  .island-label {
+    text-align: center;
+    color: rgba(232,244,253,0.5);
+    font-size: 0.8rem;
+    letter-spacing: 2px;
+  }
+
+  /* 图例 */
+  .legend {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.78rem;
+    color: rgba(232,244,253,0.7);
+  }
+  .legend-dot {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    flex-shrink: 0;
+  }
+
+  /* 状态信息 */
+  .status-box {
+    background: rgba(10,22,40,0.6);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 0.78rem;
+    line-height: 1.7;
+    color: rgba(232,244,253,0.8);
+    min-height: 70px;
+    border-left: 3px solid var(--accent);
+  }
+  .status-box .highlight { color: var(--accent); font-weight: 700; }
+  .status-box .warn { color: #f59e0b; font-weight: 700; }
+  .status-box .island-name { font-weight: 700; }
+
+  /* 栈显示 */
+  .stack-display {
+    background: rgba(10,22,40,0.6);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 0.72rem;
+    min-height: 50px;
+    max-height: 120px;
+    overflow-y: auto;
+    color: rgba(232,244,253,0.6);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .stack-item {
+    color: var(--accent);
+    padding: 2px 0;
+  }
+
+  /* 控制按钮 */
+  .controls {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .btn {
+    padding: 11px 16px;
+    border-radius: 8px;
+    border: 1px solid;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+    width: 100%;
+  }
+  .btn-primary {
+    background: rgba(80,227,194,0.1);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: rgba(80,227,194,0.2);
+    box-shadow: 0 0 16px rgba(80,227,194,0.3);
+  }
+  .btn-secondary {
+    background: rgba(255,255,255,0.04);
+    border-color: rgba(255,255,255,0.15);
+    color: rgba(232,244,253,0.6);
+  }
+  .btn-secondary:hover:not(:disabled) {
+    background: rgba(255,255,255,0.08);
+  }
+  .btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  .btn-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  /* 速度控制 */
+  .speed-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.72rem;
+    color: rgba(232,244,253,0.5);
+  }
+  .speed-control input[type=range] {
+    flex: 1;
+    accent-color: var(--accent);
+    height: 4px;
+  }
+
+  /* 完成动画 */
+  .done-badge {
+    display: none;
+    text-align: center;
+    padding: 10px;
+    background: rgba(80,227,194,0.1);
+    border: 1px solid rgba(80,227,194,0.3);
+    border-radius: 8px;
+    color: var(--accent);
+    font-size: 0.85rem;
+    letter-spacing: 1px;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  .done-badge.show { display: block; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  /* 代码区域 */
+  .code-section {
+    margin-top: 28px;
+    background: rgba(13,33,55,0.8);
+    border: 1px solid rgba(80,227,194,0.15);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .code-header {
+    padding: 14px 24px;
+    background: rgba(10,22,40,0.6);
+    border-bottom: 1px solid rgba(80,227,194,0.1);
+    font-size: 0.78rem;
+    color: rgba(232,244,253,0.5);
+    letter-spacing: 2px;
+  }
+  .code-body {
+    padding: 24px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  pre {
+    background: rgba(10,22,40,0.8);
+    border-radius: 10px;
+    padding: 18px;
+    font-size: 0.78rem;
+    line-height: 1.9;
+    overflow-x: auto;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .kw { color: #c792ea; }
+  .fn { color: #82aaff; }
+  .cm { color: #546e7a; font-style: italic; }
+  .num { color: #f78c6c; }
+  .str { color: #c3e88d; }
+  .hl { background: rgba(80,227,194,0.12); border-left: 3px solid var(--accent); padding-left: 6px; border-radius: 2px; }
+
+  .code-label {
+    font-size: 0.72rem;
+    color: rgba(232,244,253,0.4);
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+  }
+
+  @media (max-width: 750px) {
+    .main-layout { grid-template-columns: 1fr; }
+    .code-body { grid-template-columns: 1fr; }
+    h1 { font-size: 1.8rem; }
+    .cell { width: 46px; height: 46px; font-size: 1.1rem; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1>岛屿数量</h1>
+  <div class="subtitle">LeetCode 200 · DFS 深度优先搜索 · 动态图解</div>
+
+  <!-- 预设 -->
+  <div class="preset-bar">
+    <button class="preset-btn active" onclick="loadPreset(0)">示例 1（答案=1）</button>
+    <button class="preset-btn" onclick="loadPreset(1)">示例 2（答案=3）</button>
+    <button class="preset-btn" onclick="loadPreset(2)">更多岛屿（答案=5）</button>
+  </div>
+
+  <div class="main-layout">
+    <!-- 网格 -->
+    <div class="grid-section">
+      <div class="coord-label">点击格子可切换陆地 / 水</div>
+      <div class="grid-wrapper">
+        <div id="grid-container"></div>
+      </div>
+    </div>
+
+    <!-- 右侧面板 -->
+    <div class="side-panel">
+
+      <!-- 岛屿计数 -->
+      <div class="panel-card">
+        <div class="panel-title">岛屿数量</div>
+        <div class="island-count" id="island-count">0</div>
+        <div class="island-label">座 islands</div>
+      </div>
+
+      <!-- 状态 -->
+      <div class="panel-card">
+        <div class="panel-title">当前状态</div>
+        <div class="status-box" id="status-box">点击「开始演示」查看 DFS 过程</div>
+      </div>
+
+      <!-- 调用栈 -->
+      <div class="panel-card">
+        <div class="panel-title">DFS 调用栈（递归深度）</div>
+        <div class="stack-display" id="stack-display">— 空 —</div>
+      </div>
+
+      <!-- 图例 -->
+      <div class="panel-card">
+        <div class="panel-title">图例</div>
+        <div class="legend">
+          <div class="legend-item">
+            <div class="legend-dot" style="background:linear-gradient(135deg,#0d2a45,#1a4a6b)"></div>水（'0'）
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:linear-gradient(135deg,#8b6914,#c8a84b)"></div>未探索陆地（'1'）
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:linear-gradient(135deg,#00b894,#50e3c2)"></div>当前 DFS 位置
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:linear-gradient(135deg,#c0195e,#e74c8b)"></div>已归属岛屿（染色）
+          </div>
+        </div>
+      </div>
+
+      <!-- 控制 -->
+      <div class="panel-card controls">
+        <div class="done-badge" id="done-badge">✓ 遍历完成！</div>
+        <div class="btn-row">
+          <button class="btn btn-secondary" id="btn-prev" onclick="stepPrev()" disabled>◀ 上一步</button>
+          <button class="btn btn-secondary" id="btn-next" onclick="stepNext()" disabled>下一步 ▶</button>
+        </div>
+        <button class="btn btn-primary" id="btn-start" onclick="startDemo()">▶ 开始演示</button>
+        <button class="btn btn-secondary" id="btn-auto" onclick="toggleAuto()" disabled>⚡ 自动播放</button>
+        <button class="btn btn-secondary" onclick="resetDemo()">↺ 重置</button>
+        <div class="speed-control">
+          <span>慢</span>
+          <input type="range" id="speed" min="1" max="10" value="5">
+          <span>快</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 代码 -->
+  <div class="code-section">
+    <div class="code-header">JAVA · 核心代码</div>
+    <div class="code-body">
+      <div>
+        <div class="code-label">主函数 — 遍历整张地图</div>
+        <pre><span class="kw">public int</span> <span class="fn">numIslands</span>(char[][] grid) {
+  <span class="kw">int</span> count = <span class="num">0</span>;
+  <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i &lt; grid.length; i++) {
+    <span class="kw">for</span> (<span class="kw">int</span> j = <span class="num">0</span>; j &lt; grid[<span class="num">0</span>].length; j++) {
+      <span class="kw">if</span> (grid[i][j] == <span class="str">'1'</span>) {
+        count++;        <span class="cm">// 发现新岛屿</span>
+        <span class="fn">dfs</span>(grid, i, j); <span class="cm">// 淹掉整座岛</span>
+      }
+    }
+  }
+  <span class="kw">return</span> count;
+}</pre>
+      </div>
+      <div>
+        <div class="code-label">DFS 递归函数 — 淹没相连陆地</div>
+        <pre><span class="kw">void</span> <span class="fn">dfs</span>(char[][] grid, <span class="kw">int</span> i, <span class="kw">int</span> j) {
+  <span class="cm">// 越界 或 是水 → 停止</span>
+  <span class="kw">if</span> (i &lt; <span class="num">0</span> || i &gt;= grid.length
+   || j &lt; <span class="num">0</span> || j &gt;= grid[<span class="num">0</span>].length
+   || grid[i][j] == <span class="str">'0'</span>) {
+    <span class="kw">return</span>;
+  }
+  grid[i][j] = <span class="str">'0'</span>; <span class="cm">// 标记已访问（淹掉）</span>
+  <span class="fn">dfs</span>(grid, i+<span class="num">1</span>, j); <span class="cm">// 往下</span>
+  <span class="fn">dfs</span>(grid, i-<span class="num">1</span>, j); <span class="cm">// 往上</span>
+  <span class="fn">dfs</span>(grid, i, j+<span class="num">1</span>); <span class="cm">// 往右</span>
+  <span class="fn">dfs</span>(grid, i, j-<span class="num">1</span>); <span class="cm">// 往左</span>
+}</pre>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const PRESETS = [
+  [
+    ['1','1','1','1','0'],
+    ['1','1','0','1','0'],
+    ['1','1','0','0','0'],
+    ['0','0','0','0','0']
+  ],
+  [
+    ['1','1','0','0','0'],
+    ['1','1','0','0','0'],
+    ['0','0','1','0','0'],
+    ['0','0','0','1','1']
+  ],
+  [
+    ['1','0','0','1','0'],
+    ['1','0','1','1','0'],
+    ['0','0','0','0','1'],
+    ['1','1','0','0','1'],
+    ['0','1','0','1','0']
+  ]
+];
+
+let grid = [];
+let steps = [];
+let stepIdx = -1;
+let autoTimer = null;
+let isRunning = false;
+let currentPreset = 0;
+
+function loadPreset(idx) {
+  currentPreset = idx;
+  document.querySelectorAll('.preset-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
+  grid = PRESETS[idx].map(r => [...r]);
+  resetDemo();
+  renderGrid();
+}
+
+function renderGrid() {
+  const gc = document.getElementById('grid-container');
+  const rows = grid.length, cols = grid[0].length;
+  gc.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+  gc.innerHTML = '';
+  for (let i = 0; i < rows; i++) {
+    for (let j = 0; j < cols; j++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell ' + (grid[i][j] === '1' ? 'land' : 'water');
+      cell.textContent = grid[i][j];
+      cell.dataset.r = i;
+      cell.dataset.c = j;
+      cell.onclick = () => {
+        if (isRunning) return;
+        grid[i][j] = grid[i][j] === '1' ? '0' : '1';
+        resetDemo();
+        renderGrid();
+      };
+      gc.appendChild(cell);
+    }
+  }
+}
+
+function getCell(r, c) {
+  return document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+}
+
+// 生成所有步骤
+function generateSteps() {
+  const rows = grid.length, cols = grid[0].length;
+  const visited = Array.from({length: rows}, () => Array(cols).fill(false));
+  const islandMap = Array.from({length: rows}, () => Array(cols).fill(-1));
+  const stepsArr = [];
+  let islandCount = 0;
+  const islandColors = ['island-0','island-1','island-2','island-3','island-4'];
+
+  function dfs(r, c, islandIdx, callStack) {
+    if (r < 0 || r >= rows || c < 0 || c >= cols || visited[r][c] || grid[r][c] === '0') {
+      if (r < 0 || r >= rows || c < 0 || c >= cols) {
+        stepsArr.push({
+          type: 'boundary',
+          msg: `<span class="warn">越界！</span> (${r},${c}) 超出地图范围 → 返回`,
+          stack: [...callStack],
+          islandCount,
+          highlights: []
+        });
+      } else if (grid[r][c] === '0') {
+        stepsArr.push({
+          type: 'water',
+          msg: `(${r},${c}) 是<span class="warn">水</span>，停止探索 → 返回`,
+          stack: [...callStack],
+          islandCount,
+          highlights: []
+        });
+      } else if (visited[r][c]) {
+        stepsArr.push({
+          type: 'visited',
+          msg: `(${r},${c}) <span class="warn">已访问过</span> → 返回`,
+          stack: [...callStack],
+          islandCount,
+          highlights: []
+        });
+      }
+      return;
+    }
+    visited[r][c] = true;
+    islandMap[r][c] = islandIdx;
+    const newStack = [...callStack, `dfs(${r},${c})`];
+    stepsArr.push({
+      type: 'visit',
+      r, c,
+      islandIdx,
+      colorClass: islandColors[islandIdx % islandColors.length],
+      msg: `探索 <span class="highlight">(${r},${c})</span>，标记为第 <span class="highlight">${islandIdx+1}</span> 座岛`,
+      stack: [...newStack],
+      islandCount,
+      highlights: [[r,c]]
+    });
+    const dirs = [[1,0,'下'],[- 1,0,'上'],[0,1,'右'],[0,-1,'左']];
+    for (const [dr,dc,dir] of dirs) {
+      stepsArr.push({
+        type: 'try',
+        r: r+dr, c: c+dc,
+        msg: `从 (${r},${c}) 向<span class="highlight">「${dir}」</span>探索 (${r+dr},${c+dc})...`,
+        stack: [...newStack],
+        islandCount,
+        highlights: [[r,c]]
+      });
+      dfs(r+dr, c+dc, islandIdx, newStack);
+    }
+  }
+
+  for (let i = 0; i < rows; i++) {
+    for (let j = 0; j < cols; j++) {
+      stepsArr.push({
+        type: 'scan',
+        r: i, c: j,
+        msg: `扫描格子 <span class="highlight">(${i},${j})</span>，值为 <span class="highlight">'${grid[i][j]}'</span>`,
+        stack: [],
+        islandCount,
+        highlights: [[i,j]]
+      });
+      if (grid[i][j] === '1' && !visited[i][j]) {
+        islandCount++;
+        stepsArr.push({
+          type: 'newisland',
+          r: i, c: j,
+          islandIdx: islandCount - 1,
+          msg: `<span class="highlight">发现新岛屿！</span> 第 <span class="highlight">${islandCount}</span> 座 → 开始 DFS`,
+          stack: [],
+          islandCount,
+          highlights: [[i,j]]
+        });
+        dfs(i, j, islandCount - 1, []);
+      }
+    }
+  }
+
+  stepsArr.push({
+    type: 'done',
+    msg: `<span class="highlight">遍历完成！</span> 共发现 <span class="highlight">${islandCount}</span> 座岛屿`,
+    stack: [],
+    islandCount,
+    highlights: []
+  });
+
+  return stepsArr;
+}
+
+// 渲染某一步的状态
+function renderStep(idx) {
+  if (idx < 0 || idx >= steps.length) return;
+  const step = steps[idx];
+
+  // 重绘网格
+  const rows = grid.length, cols = grid[0].length;
+  const gc = document.getElementById('grid-container');
+  const cells = gc.querySelectorAll('.cell');
+  cells.forEach(cell => {
+    const r = +cell.dataset.r, c = +cell.dataset.c;
+    cell.className = 'cell';
+    // 找到这一步之前该格子已经被归属的岛屿
+    const assignedIsland = getIslandAtStep(r, c, idx);
+    if (assignedIsland >= 0) {
+      cell.className = `cell island-${assignedIsland % 5}`;
+    } else if (grid[r][c] === '1') {
+      cell.className = 'cell land';
+    } else {
+      cell.className = 'cell water';
+    }
+    cell.textContent = grid[r][c] === '1' ? '1' : '0';
+  });
+
+  // 高亮当前格
+  if (step.type === 'scan') {
+    const cell = getCell(step.r, step.c);
+    if (cell) cell.classList.add('scanning');
+  } else if (step.type === 'visit' || step.type === 'newisland' || step.type === 'try') {
+    if (step.r !== undefined) {
+      const cell = getCell(step.r, step.c);
+      if (cell) cell.classList.add('current');
+    }
+  }
+
+  // 状态
+  document.getElementById('status-box').innerHTML = step.msg;
+
+  // 岛屿计数
+  document.getElementById('island-count').textContent = step.islandCount;
+
+  // 调用栈
+  const stackEl = document.getElementById('stack-display');
+  if (step.stack && step.stack.length > 0) {
+    stackEl.innerHTML = step.stack.map((s, i) => 
+      `<div class="stack-item">${'  '.repeat(i)}↳ ${s}</div>`
+    ).join('');
+    stackEl.scrollTop = stackEl.scrollHeight;
+  } else {
+    stackEl.innerHTML = '<span style="color:rgba(232,244,253,0.3)">— 空 —</span>';
+  }
+
+  // 完成标记
+  document.getElementById('done-badge').classList.toggle('show', step.type === 'done');
+
+  // 按钮状态
+  document.getElementById('btn-prev').disabled = idx <= 0;
+  document.getElementById('btn-next').disabled = idx >= steps.length - 1;
+}
+
+// 获取格子在某步之前的岛屿归属
+function getIslandAtStep(r, c, upToIdx) {
+  for (let i = upToIdx; i >= 0; i--) {
+    const s = steps[i];
+    if (s.type === 'visit' && s.r === r && s.c === c) {
+      return s.islandIdx;
+    }
+  }
+  return -1;
+}
+
+function startDemo() {
+  isRunning = true;
+  steps = generateSteps();
+  stepIdx = 0;
+  renderStep(0);
+  document.getElementById('btn-prev').disabled = true;
+  document.getElementById('btn-next').disabled = false;
+  document.getElementById('btn-start').disabled = true;
+  document.getElementById('btn-auto').disabled = false;
+}
+
+function stepNext() {
+  if (stepIdx < steps.length - 1) {
+    stepIdx++;
+    renderStep(stepIdx);
+  }
+}
+
+function stepPrev() {
+  if (stepIdx > 0) {
+    stepIdx--;
+    renderStep(stepIdx);
+  }
+}
+
+function toggleAuto() {
+  if (autoTimer) {
+    clearInterval(autoTimer);
+    autoTimer = null;
+    document.getElementById('btn-auto').textContent = '⚡ 自动播放';
+  } else {
+    document.getElementById('btn-auto').textContent = '⏸ 暂停';
+    runAuto();
+  }
+}
+
+function runAuto() {
+  const speed = document.getElementById('speed').value;
+  const delay = Math.round(1200 / speed);
+  autoTimer = setInterval(() => {
+    if (stepIdx >= steps.length - 1) {
+      clearInterval(autoTimer);
+      autoTimer = null;
+      document.getElementById('btn-auto').textContent = '⚡ 自动播放';
+      return;
+    }
+    stepNext();
+  }, delay);
+}
+
+function resetDemo() {
+  if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+  isRunning = false;
+  steps = [];
+  stepIdx = -1;
+  document.getElementById('island-count').textContent = '0';
+  document.getElementById('status-box').innerHTML = '点击「开始演示」查看 DFS 过程';
+  document.getElementById('stack-display').innerHTML = '<span style="color:rgba(232,244,253,0.3)">— 空 —</span>';
+  document.getElementById('btn-prev').disabled = true;
+  document.getElementById('btn-next').disabled = true;
+  document.getElementById('btn-start').disabled = false;
+  document.getElementById('btn-auto').disabled = true;
+  document.getElementById('btn-auto').textContent = '⚡ 自动播放';
+  document.getElementById('done-badge').classList.remove('show');
+  renderGrid();
+}
+
+// 初始化
+loadPreset(0);
+</script>
+</body>
+</html>

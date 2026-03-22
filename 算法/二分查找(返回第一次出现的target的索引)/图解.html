@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>二分查找图解</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Sans+SC:wght@400;700;900&display=swap');
+  :root {
+    --bg: #0d1117; --panel: #161b22; --border: #30363d;
+    --blue: #58a6ff; --green: #3fb950; --orange: #f0883e;
+    --red: #f85149; --purple: #bc8cff; --text: #e6edf3; --muted: #8b949e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Noto Sans SC', sans-serif;
+    padding: 36px 28px; display: flex; flex-direction: column;
+    align-items: center; gap: 20px;
+  }
+  h1 { font-size: 22px; font-weight: 900; color: var(--blue); }
+  .subtitle { font-size: 13px; color: var(--muted); margin-top: 4px; font-family: 'JetBrains Mono', monospace; }
+
+  .legend { display: flex; gap: 20px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .dot { width: 12px; height: 12px; border-radius: 3px; }
+
+  .steps { width: 100%; max-width: 780px; display: flex; flex-direction: column; gap: 14px; }
+
+  .step {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px 22px;
+    display: flex; flex-direction: column; gap: 12px;
+    opacity: 0; transform: translateY(14px);
+    animation: up 0.4s forwards;
+  }
+  .step:nth-child(1){animation-delay:.05s} .step:nth-child(2){animation-delay:.2s}
+  .step:nth-child(3){animation-delay:.35s} .step:nth-child(4){animation-delay:.5s}
+  .step:nth-child(5){animation-delay:.65s}
+  @keyframes up { to { opacity:1; transform:translateY(0); } }
+
+  .step-head { display: flex; align-items: center; gap: 10px; }
+  .badge {
+    font-size: 11px; font-weight: 700; padding: 3px 10px;
+    border-radius: 20px; white-space: nowrap; color: #000;
+  }
+  .badge.init   { background: var(--blue); }
+  .badge.hit    { background: var(--green); }
+  .badge.miss   { background: var(--red); color:#fff; }
+  .badge.end    { background: var(--orange); }
+  .step-title { font-size: 13px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+
+  .array { display: flex; gap: 6px; align-items: flex-end; flex-wrap: wrap; }
+  .cw { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .cell {
+    width: 46px; height: 46px; border-radius: 8px; border: 2px solid var(--border);
+    background: #21262d; display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace; font-size: 17px; font-weight: 700;
+  }
+  .cell.mid    { border-color: var(--blue);   background: rgba(88,166,255,.15); color: var(--blue); }
+  .cell.hit    { border-color: var(--green);  background: rgba(63,185,80,.15);  color: var(--green); }
+  .cell.ans    { border-color: var(--orange); background: rgba(240,136,62,.2);  color: var(--orange); box-shadow: 0 0 14px rgba(240,136,62,.4); }
+  .cell.out    { opacity: .22; }
+  .idx  { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--muted); }
+  .lbl  { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; padding: 2px 5px; border-radius: 4px; min-width: 28px; text-align: center; }
+  .lbl.L  { background: rgba(248,81,73,.2);   color: var(--red); }
+  .lbl.R  { background: rgba(188,140,255,.2); color: var(--purple); }
+  .lbl.M  { background: rgba(88,166,255,.2);  color: var(--blue); }
+  .lbl.res{ background: rgba(240,136,62,.2);  color: var(--orange); }
+  .lbl.no { visibility: hidden; }
+
+  .desc {
+    font-size: 13px; color: var(--muted); line-height: 1.8;
+    padding: 10px 14px; background: rgba(255,255,255,.03);
+    border-left: 3px solid var(--border); border-radius: 0 6px 6px 0;
+  }
+  .b  { color: var(--blue);   font-weight: 700; }
+  .g  { color: var(--green);  font-weight: 700; }
+  .o  { color: var(--orange); font-weight: 700; }
+  .p  { color: var(--purple); font-weight: 700; }
+  .r  { color: var(--red);    font-weight: 700; }
+  .w  { color: var(--text);   font-weight: 700; }
+</style>
+</head>
+<body>
+
+<h1>二分查找：第一次出现的 target 索引</h1>
+<p class="subtitle">nums = [1, 2, 2, 2, 3, 4, 5] &nbsp;|&nbsp; target = 2</p>
+
+<div class="legend">
+  <div class="legend-item"><div class="dot" style="background:var(--blue)"></div>mid（当前检查）</div>
+  <div class="legend-item"><div class="dot" style="background:var(--green)"></div>命中 target</div>
+  <div class="legend-item"><div class="dot" style="background:var(--orange)"></div>最终答案</div>
+  <div class="legend-item"><div class="dot" style="background:#333"></div>已排除区间</div>
+</div>
+
+<div class="steps">
+
+  <!-- 第1轮 -->
+  <div class="step">
+    <div class="step-head">
+      <span class="badge init">第 1 轮</span>
+      <span class="step-title">left=0 &nbsp; right=6 &nbsp; result=-1</span>
+    </div>
+    <div class="array">
+      <div class="cw"><div class="cell">1</div><div class="idx">0</div><div class="lbl L">L</div></div>
+      <div class="cw"><div class="cell">2</div><div class="idx">1</div><div class="lbl no">-</div></div>
+      <div class="cw"><div class="cell">2</div><div class="idx">2</div><div class="lbl no">-</div></div>
+      <div class="cw"><div class="cell mid hit">2</div><div class="idx">3</div><div class="lbl M">mid</div></div>
+      <div class="cw"><div class="cell">3</div><div class="idx">4</div><div class="lbl no">-</div></div>
+      <div class="cw"><div class="cell">4</div><div class="idx">5</div><div class="lbl no">-</div></div>
+      <div class="cw"><div class="cell">5</div><div class="idx">6</div><div class="lbl R">R</div></div>
+    </div>
+    <div class="desc">
+      mid = 0 + (6−0)/2 = <span class="b">3</span>，nums[3] = <span class="g">2</span> == target ✓<br>
+      <span class="w">命中！</span>先记录 <span class="o">result = 3</span>，然后令 <span class="p">right = mid−1 = 2</span>，<span class="w">继续向左搜索</span>，看还有没有更早出现的 2
+    </div>
+  </div>
+
+  <!-- 第2轮 -->
+  <div class="step">
+    <div class="step-head">
+      <span class="badge hit">第 2 轮</span>
+      <span class="step-title">left=0 &nbsp; right=2 &nbsp; result=3</span>
+    </div>
+    <div class="array">
+      <div class="cw"><div class="cell">1</div><div class="idx">0</div><div class="lbl L">L</div></div>
+      <div class="cw"><div class="cell mid hit">2</div><div class="idx">1</div><div class="lbl M">mid</div></div>
+      <div class="cw"><div class="cell">2</div><div class="idx">2</div><div class="lbl R">R</div></div>
+      <div class="cw"><div class="cell out">2</div><div class="idx">3</div><div class="lbl res">↑3</div></div>
+      <div class="cw"><div class="cell out">3</div><div class="idx">4</div><div class="lbl no">-</div></div>
+      <div class="cw"><div class="cell out">4</div><div class="idx">5</div><div class="lbl no">-</div></div>
+      <div class="cw"><div class="cell out">5</div><div class="idx">6</div><div class="lbl no">-</div></div>
+    </div>
+    <div class="desc">
+      mid = 0 + (2−0)/2 = <span class="b">1</span>，nums[1] = <span class="g">2</span> == target ✓<br>
+      <span class="w">再次命中！</span>更新 <span class="o">result = 1</span>，令 <span class="p">right = mid−1 = 0</span>，<span class="w">继续往左</span>
+    </div>
+  </div>
+
+  <!-- 第3轮 -->
+  <div class="step">
+    <div class="step-head">
+      <span class="badge miss">第 3 轮</span>
+      <span class="step-title">left=0 &nbsp; right=0 &nbsp; result=1</span>
+    </div>
+    <div class="array">
+      <div class="cw"><div class="cell mid">1</div><div class="idx">0</div><div class="lbl M">L/R/mid</div></div>
+      <div class="cw"><div class="cell out">2</div><div class="idx">1</div><div class="lbl res">↑1</div></div>
+      <div class="cw"><div class="cell out">2</div><div class="idx">2</div><div class="lbl no">-</div></div>
+      <div class="cw"><div class="cell out">2</div><div class="idx">3</div><div class="lbl no">-</div></div>
+      <div class="cw"><div class="cell out">3</div><div class="idx">4</div><div class="lbl no">-</div></div>
+      <div class="cw"><div class="cell out">4</div><div class="idx">5</div><div class="lbl no">-</div></div>
+      <div class="cw"><div class="cell out">5</div><div class="idx">6</div><div class="lbl no">-</div></div>
+    </div>
+    <div class="desc">
+      mid = 0 + (0−0)/2 = <span class="b">0</span>，nums[0] = <span class="r">1</span> &lt; target<br>
+      nums[mid] 小于 target，说明答案在右边，令 <span class="r">left = mid+1 = 1</span>
+    </div>
+  </div>
+
+  <!-- 终止 -->
+  <div class="step">
+    <div class="step-head">
+      <span class="badge end">终止</span>
+      <span class="step-title">left=1 &gt; right=0，退出循环</span>
+    </div>
+    <div class="array">
+      <div class="cw"><div class="cell out">1</div><div class="idx">0</div><div class="lbl no">-</div></div>
+      <div class="cw"><div class="cell ans">2</div><div class="idx">1</div><div class="lbl res">答案</div></div>
+      <div class="cw"><div class="cell out">2</div><div class="idx">2</div><div class="lbl no">-</div></div>
+      <div class="cw"><div class="cell out">2</div><div class="idx">3</div><div class="lbl no">-</div></div>
+      <div class="cw"><div class="cell out">3</div><div class="idx">4</div><div class="lbl no">-</div></div>
+      <div class="cw"><div class="cell out">4</div><div class="idx">5</div><div class="lbl no">-</div></div>
+      <div class="cw"><div class="cell out">5</div><div class="idx">6</div><div class="lbl no">-</div></div>
+    </div>
+    <div class="desc">
+      left &gt; right，循环结束。返回 <span class="o">result = 1</span>，即 target=2 <span class="w">第一次出现</span>的位置。
+    </div>
+  </div>
+
+  <!-- 核心思路总结 -->
+  <div class="step" style="border-color: var(--orange);">
+    <div class="step-head">
+      <span class="badge end">核心思路</span>
+      <span class="step-title">与普通二分唯一的区别</span>
+    </div>
+    <div class="desc" style="border-left-color: var(--orange); font-size: 14px; line-height: 2;">
+      普通二分：找到 target 就 <span class="b">立即 return mid</span><br>
+      本题：找到 target 后，<span class="g">记录 result = mid</span>，然后 <span class="p">right = mid − 1</span> 强制向左收缩<br>
+      直到区间耗尽，<span class="o">result 就是最左边（第一次）出现的位置</span>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

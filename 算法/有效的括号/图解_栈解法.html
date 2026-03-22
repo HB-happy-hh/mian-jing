@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>有效的括号 — 栈解法动态图解</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Sans+SC:wght@300;400;700;900&display=swap');
+
+  :root {
+    --bg: #0d0d0d;
+    --panel: #161616;
+    --border: #2a2a2a;
+    --accent: #00e5ff;
+    --accent2: #ff6b35;
+    --accent3: #a8ff3e;
+    --push-color: #00e5ff;
+    --pop-color: #ff6b35;
+    --match-color: #a8ff3e;
+    --fail-color: #ff3e6b;
+    --text: #e8e8e8;
+    --muted: #666;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans SC', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+  }
+
+  h1 {
+    font-size: 2rem;
+    font-weight: 900;
+    letter-spacing: 0.05em;
+    margin-bottom: 6px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin-bottom: 36px;
+    letter-spacing: 0.1em;
+  }
+
+  /* ── 示例选择 ── */
+  .examples {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 30px;
+  }
+
+  .ex-btn {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+  }
+  .ex-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .ex-btn.active { border-color: var(--accent); background: rgba(0,229,255,0.08); color: var(--accent); }
+
+  /* 自定义输入 */
+  .custom-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 30px;
+    align-items: center;
+  }
+  .custom-row input {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1rem;
+    width: 180px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .custom-row input:focus { border-color: var(--accent); }
+  .custom-row button {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    padding: 8px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 0.9rem;
+    transition: opacity 0.2s;
+  }
+  .custom-row button:hover { opacity: 0.85; }
+
+  /* ── 主区域 ── */
+  .arena {
+    width: 100%;
+    max-width: 820px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px 28px;
+  }
+
+  .panel-label {
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+
+  /* ── 字符串展示 ── */
+  .str-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .char-box {
+    width: 44px;
+    height: 44px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.3rem;
+    font-weight: 700;
+    transition: all 0.3s;
+    position: relative;
+  }
+  .char-box .idx {
+    position: absolute;
+    bottom: -18px;
+    font-size: 0.6rem;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .char-box.current {
+    border-color: var(--accent);
+    background: rgba(0,229,255,0.12);
+    color: var(--accent);
+    transform: translateY(-4px);
+    box-shadow: 0 0 16px rgba(0,229,255,0.3);
+  }
+  .char-box.done-ok {
+    border-color: var(--match-color);
+    color: var(--match-color);
+    background: rgba(168,255,62,0.06);
+  }
+  .char-box.done-fail {
+    border-color: var(--fail-color);
+    color: var(--fail-color);
+    background: rgba(255,62,107,0.08);
+  }
+  .char-box.pending { color: #555; }
+
+  /* ── 栈 ── */
+  .stack-area {
+    display: flex;
+    gap: 32px;
+    align-items: flex-end;
+  }
+
+  .stack-visual {
+    flex: 1;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 5px;
+    min-height: 200px;
+    justify-content: flex-start;
+  }
+
+  .stack-item {
+    height: 46px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.4rem;
+    font-weight: 700;
+    border: 1.5px solid var(--push-color);
+    color: var(--push-color);
+    background: rgba(0,229,255,0.07);
+    animation: pushIn 0.35s cubic-bezier(.34,1.56,.64,1);
+    position: relative;
+  }
+  .stack-item .top-label {
+    position: absolute;
+    right: 10px;
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    font-family: 'Noto Sans SC', sans-serif;
+    font-weight: 400;
+  }
+
+  @keyframes pushIn {
+    from { opacity: 0; transform: translateY(-24px) scale(0.85); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes popOut {
+    from { opacity: 1; transform: translateY(0) scale(1); }
+    to   { opacity: 0; transform: translateY(-30px) scale(0.7); }
+  }
+  .stack-item.popping {
+    animation: popOut 0.3s ease forwards;
+  }
+  .stack-item.match-flash {
+    border-color: var(--match-color);
+    color: var(--match-color);
+    background: rgba(168,255,62,0.12);
+    box-shadow: 0 0 16px rgba(168,255,62,0.4);
+  }
+  .stack-item.fail-flash {
+    border-color: var(--fail-color);
+    color: var(--fail-color);
+    background: rgba(255,62,107,0.12);
+  }
+
+  .stack-empty-hint {
+    color: var(--muted);
+    font-size: 0.85rem;
+    text-align: center;
+    padding: 20px 0;
+    border: 1.5px dashed var(--border);
+    border-radius: 8px;
+  }
+
+  .stack-labels {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    font-size: 0.7rem;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    padding-bottom: 4px;
+    min-width: 60px;
+  }
+
+  /* ── 操作日志 ── */
+  .log-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 280px;
+    overflow-y: auto;
+  }
+  .log-area::-webkit-scrollbar { width: 4px; }
+  .log-area::-webkit-scrollbar-track { background: transparent; }
+  .log-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .log-entry {
+    font-size: 0.82rem;
+    padding: 7px 12px;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    opacity: 0;
+    animation: fadeSlide 0.3s ease forwards;
+  }
+  @keyframes fadeSlide {
+    from { opacity: 0; transform: translateX(-10px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  .log-entry.push { background: rgba(0,229,255,0.07); color: var(--push-color); }
+  .log-entry.pop  { background: rgba(255,107,53,0.07); color: var(--pop-color); }
+  .log-entry.ok   { background: rgba(168,255,62,0.07); color: var(--match-color); }
+  .log-entry.fail { background: rgba(255,62,107,0.07); color: var(--fail-color); }
+  .log-entry.info { background: rgba(255,255,255,0.03); color: var(--muted); }
+
+  /* ── 控制条 ── */
+  .controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .ctrl-btn {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 9px 22px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+    font-family: 'Noto Sans SC', sans-serif;
+  }
+  .ctrl-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .ctrl-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .ctrl-btn.primary {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+    font-weight: 700;
+  }
+  .ctrl-btn.primary:hover { opacity: 0.85; }
+
+  .speed-label { color: var(--muted); font-size: 0.82rem; }
+  .speed-select {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    outline: none;
+  }
+
+  /* ── 结果横幅 ── */
+  .result-banner {
+    padding: 18px 28px;
+    border-radius: 12px;
+    font-size: 1.5rem;
+    font-weight: 900;
+    text-align: center;
+    letter-spacing: 0.05em;
+    display: none;
+    animation: bannerIn 0.5s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes bannerIn {
+    from { opacity: 0; transform: scale(0.8); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  .result-banner.true  {
+    display: block;
+    background: rgba(168,255,62,0.1);
+    border: 1.5px solid var(--match-color);
+    color: var(--match-color);
+  }
+  .result-banner.false {
+    display: block;
+    background: rgba(255,62,107,0.1);
+    border: 1.5px solid var(--fail-color);
+    color: var(--fail-color);
+  }
+
+  /* ── 算法伪代码 ── */
+  .code-block {
+    background: #111;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 22px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    line-height: 1.9;
+    color: #bbb;
+    counter-reset: line;
+  }
+  .code-line { display: flex; gap: 16px; }
+  .code-line .ln { color: #333; user-select: none; min-width: 16px; text-align: right; }
+  .code-line.hl { background: rgba(0,229,255,0.08); border-radius: 4px; color: var(--accent); }
+  .kw { color: #c792ea; }
+  .fn { color: #82aaff; }
+  .cm { color: #546e7a; }
+  .br { color: var(--accent2); }
+  .nm { color: var(--accent3); }
+</style>
+</head>
+<body>
+
+<h1>20. 有效的括号</h1>
+<p class="subtitle">STACK-BASED SOLUTION · STEP-BY-STEP VISUALIZATION</p>
+
+<!-- 示例选择 -->
+<div class="examples">
+  <button class="ex-btn active" onclick="loadExample(0, this)"><span style="color:#a8ff3e">✓</span> "()"</button>
+  <button class="ex-btn" onclick="loadExample(1, this)"><span style="color:#a8ff3e">✓</span> "()[]{}"</button>
+  <button class="ex-btn" onclick="loadExample(2, this)"><span style="color:#ff3e6b">✗</span> "(]"</button>
+  <button class="ex-btn" onclick="loadExample(3, this)"><span style="color:#ff3e6b">✗</span> "([)]"</button>
+  <button class="ex-btn" onclick="loadExample(4, this)"><span style="color:#a8ff3e">✓</span> "{[]}"</button>
+</div>
+
+<div class="custom-row">
+  <input type="text" id="customInput" placeholder="自定义输入…" maxlength="20">
+  <button onclick="loadCustom()">运行</button>
+</div>
+
+<div class="arena">
+
+  <!-- 字符串 -->
+  <div class="panel">
+    <div class="panel-label">字符串 s</div>
+    <div class="str-row" id="strRow"></div>
+  </div>
+
+  <!-- 栈 + 日志 -->
+  <div class="panel" style="display:flex;gap:24px;flex-wrap:wrap;">
+    <div style="flex:1;min-width:200px;">
+      <div class="panel-label">栈 Stack</div>
+      <div class="stack-visual" id="stackVisual">
+        <div class="stack-empty-hint" id="emptyHint">栈为空</div>
+      </div>
+    </div>
+    <div style="flex:1.4;min-width:220px;">
+      <div class="panel-label">操作日志</div>
+      <div class="log-area" id="logArea"></div>
+    </div>
+  </div>
+
+  <!-- 控制 -->
+  <div class="controls">
+    <button class="ctrl-btn" id="prevBtn" onclick="stepPrev()" disabled>◀ 上一步</button>
+    <button class="ctrl-btn primary" id="playBtn" onclick="togglePlay()">▶ 自动播放</button>
+    <button class="ctrl-btn" id="nextBtn" onclick="stepNext()">下一步 ▶</button>
+    <button class="ctrl-btn" onclick="resetAnim()">↺ 重置</button>
+    <span class="speed-label">速度</span>
+    <select class="speed-select" id="speedSel">
+      <option value="1200">慢</option>
+      <option value="700" selected>中</option>
+      <option value="350">快</option>
+    </select>
+  </div>
+
+  <!-- 结果 -->
+  <div class="result-banner" id="resultBanner"></div>
+
+  <!-- 伪代码 -->
+  <div class="panel">
+    <div class="panel-label">核心代码 Java</div>
+    <div class="code-block" id="codeBlock">
+      <div class="code-line" id="cl1"><span class="ln">1</span><span><span class="kw">public boolean</span> <span class="fn">isValid</span>(<span class="kw">String</span> s) {</span></div>
+      <div class="code-line" id="cl2"><span class="ln">2</span><span>  Deque&lt;<span class="kw">Character</span>&gt; stack = <span class="kw">new</span> <span class="fn">ArrayDeque</span>();</span></div>
+      <div class="code-line" id="cl3"><span class="ln">3</span><span>  <span class="kw">for</span> (<span class="kw">char</span> c : s.<span class="fn">toCharArray</span>()) {</span></div>
+      <div class="code-line" id="cl4"><span class="ln">4</span><span>    <span class="kw">if</span> (c == <span class="br">'('</span> || c == <span class="br">'['</span> || c == <span class="br">'{'</span>) {</span></div>
+      <div class="code-line" id="cl5"><span class="ln">5</span><span>      stack.<span class="fn">push</span>(c);  <span class="cm">// 左括号 → 入栈</span></span></div>
+      <div class="code-line" id="cl6"><span class="ln">6</span><span>    } <span class="kw">else</span> {</span></div>
+      <div class="code-line" id="cl7"><span class="ln">7</span><span>      <span class="kw">if</span> (stack.<span class="fn">isEmpty</span>()) <span class="kw">return false</span>;</span></div>
+      <div class="code-line" id="cl8"><span class="ln">8</span><span>      <span class="kw">char</span> top = stack.<span class="fn">pop</span>();</span></div>
+      <div class="code-line" id="cl9"><span class="ln">9</span><span>      <span class="kw">if</span> (!<span class="fn">match</span>(top, c)) <span class="kw">return false</span>;</span></div>
+      <div class="code-line" id="cl10"><span class="ln">10</span><span>    }</span></div>
+      <div class="code-line" id="cl11"><span class="ln">11</span><span>  }</span></div>
+      <div class="code-line" id="cl12"><span class="ln">12</span><span>  <span class="kw">return</span> stack.<span class="fn">isEmpty</span>();  <span class="cm">// 栈空 → 全部匹配</span></span></div>
+      <div class="code-line" id="cl13"><span class="ln">13</span><span>}</span></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const EXAMPLES = ['()', '()[]{}',' (]', '([)]', '{[]}'];
+// fix spaces
+const EXAMPLES_CLEAN = ['()', '()[]{}", "(]", "([)]', '{[]}'];
+const EXAMPLE_STRS = ['()', '()[]{}', '(]', '([)]', '{[]}'];
+
+const PAIRS = { ')': '(', ']': '[', '}': '{' };
+const LEFT  = new Set(['(', '[', '{']);
+const RIGHT = new Set([')', ']', '}']);
+
+let steps = [];       // pre-computed steps
+let curStep = -1;
+let playing = false;
+let playTimer = null;
+let currentStr = '';
+
+// ─── 构建步骤序列 ───────────────────────────────────
+function buildSteps(s) {
+  const stk = [];
+  const stepList = [];
+  const charState = Array(s.length).fill('pending');
+
+  stepList.push({
+    type: 'init',
+    stack: [],
+    charState: [...charState],
+    log: { cls: 'info', text: `开始处理字符串 "${s}"，栈初始化为空` },
+    codeLine: 2,
+  });
+
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+
+    if (LEFT.has(c)) {
+      stk.push(c);
+      charState[i] = 'done-ok';
+      stepList.push({
+        type: 'push',
+        charIdx: i,
+        char: c,
+        stack: [...stk],
+        charState: [...charState],
+        log: { cls: 'push', text: `'${c}' 是左括号 → 入栈 PUSH` },
+        codeLine: 5,
+      });
+    } else if (RIGHT.has(c)) {
+      if (stk.length === 0) {
+        charState[i] = 'done-fail';
+        stepList.push({
+          type: 'fail-empty',
+          charIdx: i,
+          char: c,
+          stack: [...stk],
+          charState: [...charState],
+          log: { cls: 'fail', text: `'${c}' 是右括号，但栈为空 → 返回 false` },
+          codeLine: 7,
+          result: false,
+        });
+        return stepList;
+      }
+      const top = stk[stk.length - 1];
+      if (PAIRS[c] !== top) {
+        charState[i] = 'done-fail';
+        const popStk = [...stk];
+        stk.pop();
+        stepList.push({
+          type: 'fail-mismatch',
+          charIdx: i,
+          char: c,
+          top,
+          stack: popStk,
+          popStack: [...stk],
+          charState: [...charState],
+          log: { cls: 'fail', text: `'${c}' 期望匹配 '${PAIRS[c]}'，但栈顶是 '${top}' → 不匹配，返回 false` },
+          codeLine: 9,
+          result: false,
+        });
+        return stepList;
+      }
+      stk.pop();
+      charState[i] = 'done-ok';
+      stepList.push({
+        type: 'pop-match',
+        charIdx: i,
+        char: c,
+        top,
+        stack: [...stk],
+        charState: [...charState],
+        log: { cls: 'ok', text: `'${c}' 与栈顶 '${top}' 匹配 ✓ → 弹出 POP` },
+        codeLine: 8,
+      });
+    }
+  }
+
+  const ok = stk.length === 0;
+  stepList.push({
+    type: ok ? 'result-true' : 'result-false',
+    stack: [...stk],
+    charState: [...charState],
+    log: { cls: ok ? 'ok' : 'fail', text: ok ? '遍历结束，栈为空 → 返回 true ✓' : `遍历结束，栈中仍有 ${stk.length} 个未匹配括号 → 返回 false` },
+    codeLine: 12,
+    result: ok,
+  });
+
+  return stepList;
+}
+
+// ─── 渲染某一步 ──────────────────────────────────────
+function renderStep(idx) {
+  const step = steps[idx];
+
+  // 字符格
+  const boxes = document.querySelectorAll('.char-box');
+  step.charState.forEach((cls, i) => {
+    boxes[i].className = 'char-box ' + (i === step.charIdx ? 'current' : cls);
+  });
+
+  // 栈
+  renderStack(step);
+
+  // 日志（只追加新条目到当前步）
+  syncLog(idx);
+
+  // 代码高亮
+  document.querySelectorAll('.code-line').forEach(el => el.classList.remove('hl'));
+  if (step.codeLine) {
+    const cl = document.getElementById('cl' + step.codeLine);
+    if (cl) cl.classList.add('hl');
+  }
+
+  // 结果横幅
+  const banner = document.getElementById('resultBanner');
+  if (step.result !== undefined) {
+    banner.className = 'result-banner ' + step.result;
+    banner.textContent = step.result ? '✓  输出：true — 有效的括号字符串' : '✗  输出：false — 括号不匹配';
+  } else {
+    banner.className = 'result-banner';
+  }
+
+  // 按钮状态
+  document.getElementById('prevBtn').disabled = idx <= 0;
+  document.getElementById('nextBtn').disabled = idx >= steps.length - 1;
+}
+
+function renderStack(step) {
+  const sv = document.getElementById('stackVisual');
+  const hint = document.getElementById('emptyHint');
+
+  sv.innerHTML = '';
+
+  if (step.stack.length === 0) {
+    const h = document.createElement('div');
+    h.className = 'stack-empty-hint';
+    h.id = 'emptyHint';
+    h.textContent = '栈为空';
+    sv.appendChild(h);
+    return;
+  }
+
+  step.stack.forEach((ch, i) => {
+    const el = document.createElement('div');
+    el.className = 'stack-item';
+    const isTop = i === step.stack.length - 1;
+    if (isTop) {
+      if (step.type === 'pop-match') el.classList.add('match-flash');
+      if (step.type === 'fail-mismatch') el.classList.add('fail-flash');
+    }
+    el.innerHTML = ch + (isTop ? '<span class="top-label">TOP</span>' : '');
+    sv.appendChild(el);
+  });
+}
+
+// ─── 日志同步 ─────────────────────────────────────────
+let logCache = []; // { idx, html }
+
+function syncLog(stepIdx) {
+  const la = document.getElementById('logArea');
+  // 重建前 stepIdx+1 条
+  la.innerHTML = '';
+  for (let i = 0; i <= stepIdx; i++) {
+    const s = steps[i];
+    if (!s.log) continue;
+    const el = document.createElement('div');
+    el.className = 'log-entry ' + s.log.cls;
+    const icon = {push:'⬇', pop:'⬆', ok:'✓', fail:'✗', info:'◆'}[s.log.cls] || '·';
+    el.innerHTML = `<span>${icon}</span><span>${s.log.text}</span>`;
+    el.style.animationDelay = '0ms'; // no delay on rebuild
+    la.appendChild(el);
+  }
+  la.scrollTop = la.scrollHeight;
+}
+
+// ─── 控制 ────────────────────────────────────────────
+function stepNext() {
+  if (curStep < steps.length - 1) {
+    curStep++;
+    renderStep(curStep);
+  }
+  if (curStep === steps.length - 1 && playing) stopPlay();
+}
+
+function stepPrev() {
+  if (curStep > 0) {
+    curStep--;
+    renderStep(curStep);
+  }
+}
+
+function togglePlay() {
+  if (playing) stopPlay();
+  else startPlay();
+}
+
+function startPlay() {
+  if (curStep >= steps.length - 1) resetAnim();
+  playing = true;
+  document.getElementById('playBtn').textContent = '⏸ 暂停';
+  scheduleNext();
+}
+
+function stopPlay() {
+  playing = false;
+  document.getElementById('playBtn').textContent = '▶ 自动播放';
+  clearTimeout(playTimer);
+}
+
+function scheduleNext() {
+  const speed = parseInt(document.getElementById('speedSel').value);
+  playTimer = setTimeout(() => {
+    stepNext();
+    if (playing && curStep < steps.length - 1) scheduleNext();
+    else if (playing) stopPlay();
+  }, speed);
+}
+
+function resetAnim() {
+  stopPlay();
+  curStep = 0;
+  renderStep(0);
+  document.getElementById('resultBanner').className = 'result-banner';
+}
+
+// ─── 加载字符串 ───────────────────────────────────────
+function load(s) {
+  stopPlay();
+  currentStr = s;
+  steps = buildSteps(s);
+  curStep = 0;
+
+  // 渲染字符格
+  const row = document.getElementById('strRow');
+  row.innerHTML = '';
+  for (let i = 0; i < s.length; i++) {
+    const box = document.createElement('div');
+    box.className = 'char-box pending';
+    box.innerHTML = s[i] + `<span class="idx">${i}</span>`;
+    row.appendChild(box);
+  }
+
+  // 清空日志
+  document.getElementById('logArea').innerHTML = '';
+  document.getElementById('resultBanner').className = 'result-banner';
+  document.querySelectorAll('.code-line').forEach(el => el.classList.remove('hl'));
+
+  renderStep(0);
+}
+
+function loadExample(idx, btn) {
+  document.querySelectorAll('.ex-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  load(EXAMPLE_STRS[idx]);
+}
+
+function loadCustom() {
+  const v = document.getElementById('customInput').value.trim();
+  if (!v) return;
+  // validate chars
+  if (!/^[()[\]{}]+$/.test(v)) {
+    alert('只能输入括号字符：( ) [ ] { }');
+    return;
+  }
+  document.querySelectorAll('.ex-btn').forEach(b => b.classList.remove('active'));
+  load(v);
+}
+
+// ─── 初始化 ──────────────────────────────────────────
+load(EXAMPLE_STRS[0]);
+</script>
+</body>
+</html>

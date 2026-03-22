@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>最长公共子序列 · 动态规划图解</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Sans+SC:wght@300;400;700&display=swap');
+
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #7d8590;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --orange: #d29922;
+    --red: #f85149;
+    --purple: #bc8cff;
+    --match-bg: #1a3a1a;
+    --match-border: #3fb950;
+    --nomatch-bg: #1a1a2e;
+    --nomatch-border: #58a6ff;
+    --current-bg: #2d2016;
+    --current-border: #d29922;
+    --done-bg: #1c2128;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans SC', sans-serif;
+    min-height: 100vh;
+    padding: 40px 20px;
+  }
+
+  h1 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-align: center;
+    margin-bottom: 6px;
+    color: var(--accent);
+  }
+
+  .subtitle {
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    margin-bottom: 36px;
+  }
+
+  .main {
+    max-width: 860px;
+    margin: 0 auto;
+  }
+
+  /* 输入区 */
+  .input-area {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px 28px;
+    margin-bottom: 28px;
+    display: flex;
+    gap: 20px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    min-width: 160px;
+  }
+
+  label {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 1px;
+  }
+
+  input[type="text"] {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    padding: 8px 12px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  input[type="text"]:focus {
+    border-color: var(--accent);
+  }
+
+  .btn-group {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  button {
+    font-family: 'Noto Sans SC', sans-serif;
+    font-size: 13px;
+    padding: 9px 18px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+
+  button:active { transform: scale(0.97); }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #000;
+    font-weight: 700;
+  }
+
+  .btn-secondary {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .btn-auto {
+    background: var(--green);
+    color: #000;
+    font-weight: 700;
+  }
+
+  button:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  /* 说明框 */
+  .explain-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    font-size: 14px;
+    line-height: 1.8;
+    min-height: 60px;
+    transition: border-color 0.3s;
+  }
+
+  .explain-box.match   { border-color: var(--match-border); }
+  .explain-box.nomatch { border-color: var(--nomatch-border); }
+  .explain-box.done    { border-color: var(--purple); }
+
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    margin-right: 6px;
+    font-weight: 700;
+  }
+
+  .tag-match   { background: var(--match-bg);   color: var(--green);  border: 1px solid var(--match-border); }
+  .tag-nomatch { background: var(--nomatch-bg);  color: var(--accent); border: 1px solid var(--nomatch-border); }
+  .tag-done    { background: #1e1433;            color: var(--purple); border: 1px solid var(--purple); }
+
+  code {
+    font-family: 'JetBrains Mono', monospace;
+    background: #21262d;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 13px;
+    color: var(--orange);
+  }
+
+  /* 字符串展示 */
+  .str-display {
+    display: flex;
+    gap: 28px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+  .str-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .str-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    min-width: 44px;
+  }
+
+  .str-chars {
+    display: flex;
+    gap: 4px;
+  }
+
+  .char-box {
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 15px;
+    font-weight: 700;
+    background: var(--surface);
+    transition: all 0.3s;
+  }
+
+  .char-box.active-char {
+    background: var(--current-bg);
+    border-color: var(--orange);
+    color: var(--orange);
+    box-shadow: 0 0 8px rgba(210,153,34,0.4);
+  }
+
+  /* DP 表格 */
+  .table-wrap {
+    overflow-x: auto;
+    margin-bottom: 24px;
+  }
+
+  table {
+    border-collapse: separate;
+    border-spacing: 3px;
+    margin: 0 auto;
+  }
+
+  td {
+    width: 44px;
+    height: 44px;
+    text-align: center;
+    vertical-align: middle;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 15px;
+    font-weight: 700;
+    transition: all 0.3s;
+    position: relative;
+  }
+
+  /* 表头行/列 */
+  .header-cell {
+    background: transparent;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 400;
+  }
+
+  .header-char {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  /* 数据格 */
+  .dp-cell {
+    background: var(--done-bg);
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+
+  .dp-cell.empty {
+    background: var(--bg);
+    color: transparent;
+    border: 1px dashed #21262d;
+  }
+
+  .dp-cell.current {
+    background: var(--current-bg);
+    border: 2px solid var(--orange);
+    color: var(--orange);
+    box-shadow: 0 0 12px rgba(210,153,34,0.5);
+    transform: scale(1.12);
+    z-index: 10;
+  }
+
+  .dp-cell.match {
+    background: var(--match-bg);
+    border: 1px solid var(--match-border);
+    color: var(--green);
+  }
+
+  .dp-cell.nomatch {
+    background: var(--nomatch-bg);
+    border: 1px solid var(--nomatch-border);
+    color: var(--accent);
+  }
+
+  .dp-cell.answer {
+    background: #2d1b4e;
+    border: 2px solid var(--purple);
+    color: var(--purple);
+    box-shadow: 0 0 14px rgba(188,140,255,0.5);
+    transform: scale(1.12);
+  }
+
+  /* 进度 */
+  .progress-bar {
+    background: var(--border);
+    border-radius: 4px;
+    height: 4px;
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 4px;
+    transition: width 0.3s;
+  }
+
+  /* 结果 */
+  .result-badge {
+    display: inline-block;
+    background: #2d1b4e;
+    border: 1px solid var(--purple);
+    border-radius: 8px;
+    padding: 8px 20px;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--purple);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .speed-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+
+  .speed-row label { color: var(--muted); font-size: 12px; }
+
+  input[type="range"] {
+    accent-color: var(--accent);
+    width: 120px;
+  }
+</style>
+</head>
+<body>
+<div class="main">
+  <h1>最长公共子序列</h1>
+  <p class="subtitle">Longest Common Subsequence · 动态规划过程可视化</p>
+
+  <!-- 输入区 -->
+  <div class="input-area">
+    <div class="input-group">
+      <label>TEXT1</label>
+      <input type="text" id="t1" value="abcde" maxlength="10">
+    </div>
+    <div class="input-group">
+      <label>TEXT2</label>
+      <input type="text" id="t2" value="ace" maxlength="10">
+    </div>
+    <div class="btn-group">
+      <button class="btn-primary" onclick="init()">重置</button>
+      <button class="btn-secondary" id="btnStep" onclick="step()">下一步</button>
+      <button class="btn-auto" id="btnAuto" onclick="toggleAuto()">▶ 自动</button>
+    </div>
+  </div>
+
+  <div class="speed-row">
+    <label>速度：</label>
+    <input type="range" id="speedRange" min="100" max="1000" value="500" step="100">
+    <label id="speedLabel">500ms</label>
+  </div>
+
+  <br>
+
+  <!-- 进度条 -->
+  <div class="progress-bar">
+    <div class="progress-fill" id="progressFill" style="width:0%"></div>
+  </div>
+
+  <!-- 说明框 -->
+  <div class="explain-box" id="explainBox">
+    <span class="tag tag-nomatch">提示</span>点击 <strong>下一步</strong> 逐格填写 DP 表格，或点击 <strong>▶ 自动</strong> 自动演示。
+  </div>
+
+  <!-- 字符串 -->
+  <div class="str-display">
+    <div class="str-row">
+      <span class="str-label">text1</span>
+      <div class="str-chars" id="chars1"></div>
+    </div>
+    <div class="str-row">
+      <span class="str-label">text2</span>
+      <div class="str-chars" id="chars2"></div>
+    </div>
+  </div>
+
+  <!-- 表格 -->
+  <div class="table-wrap">
+    <table id="dpTable"></table>
+  </div>
+
+</div>
+
+<script>
+let text1, text2, m, n, dp, steps, stepIdx, autoTimer, isAuto = false;
+
+document.getElementById('speedRange').addEventListener('input', function() {
+  document.getElementById('speedLabel').textContent = this.value + 'ms';
+});
+
+function init() {
+  clearInterval(autoTimer);
+  isAuto = false;
+  document.getElementById('btnAuto').textContent = '▶ 自动';
+
+  text1 = document.getElementById('t1').value.trim() || 'abcde';
+  text2 = document.getElementById('t2').value.trim() || 'ace';
+  m = text1.length;
+  n = text2.length;
+
+  dp = Array.from({length: m+1}, () => new Array(n+1).fill(null));
+  for (let i = 0; i <= m; i++) dp[i][0] = 0;
+  for (let j = 0; j <= n; j++) dp[0][j] = 0;
+
+  // 预计算所有步骤
+  steps = [];
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      steps.push({i, j});
+    }
+  }
+  stepIdx = 0;
+
+  renderChars();
+  renderTable(null, null, false);
+  updateProgress();
+  setExplain('init');
+  document.getElementById('btnStep').disabled = false;
+}
+
+function renderChars(ci = -1, cj = -1) {
+  const c1 = document.getElementById('chars1');
+  const c2 = document.getElementById('chars2');
+  c1.innerHTML = '';
+  c2.innerHTML = '';
+  for (let k = 0; k < text1.length; k++) {
+    const d = document.createElement('div');
+    d.className = 'char-box' + (k === ci - 1 ? ' active-char' : '');
+    d.textContent = text1[k];
+    c1.appendChild(d);
+  }
+  for (let k = 0; k < text2.length; k++) {
+    const d = document.createElement('div');
+    d.className = 'char-box' + (k === cj - 1 ? ' active-char' : '');
+    d.textContent = text2[k];
+    c2.appendChild(d);
+  }
+}
+
+function renderTable(curI, curJ, done) {
+  const tbl = document.getElementById('dpTable');
+  tbl.innerHTML = '';
+
+  // 表头行
+  const headRow = tbl.insertRow();
+  addCell(headRow, '', 'header-cell');
+  addCell(headRow, '""', 'header-cell');
+  for (let j = 0; j < n; j++) addCell(headRow, text2[j], 'header-char');
+
+  for (let i = 0; i <= m; i++) {
+    const row = tbl.insertRow();
+    // 行头
+    if (i === 0) addCell(row, '""', 'header-cell');
+    else addCell(row, text1[i-1], 'header-char');
+
+    for (let j = 0; j <= n; j++) {
+      const val = dp[i][j];
+      let cls = 'dp-cell';
+
+      if (val === null) {
+        cls += ' empty';
+      } else if (done && i === m && j === n) {
+        cls += ' answer';
+      } else if (curI === i && curJ === j) {
+        const matched = text1[i-1] === text2[j-1];
+        cls += ' current ' + (matched ? 'match' : 'nomatch');
+      } else if (val !== null && i > 0 && j > 0) {
+        const matched = text1[i-1] === text2[j-1];
+        cls += matched ? ' match' : ' nomatch';
+      }
+
+      const td = addCell(row, val === null ? '' : val, cls);
+    }
+  }
+}
+
+function addCell(row, text, cls) {
+  const td = row.insertCell();
+  td.textContent = text;
+  td.className = cls;
+  return td;
+}
+
+function setExplain(type, i, j) {
+  const box = document.getElementById('explainBox');
+  box.className = 'explain-box';
+  if (type === 'init') {
+    box.innerHTML = `<span class="tag tag-nomatch">提示</span>点击 <strong>下一步</strong> 逐格填写 DP 表格，或点击 <strong>▶ 自动</strong> 自动演示。`;
+  } else if (type === 'match') {
+    box.classList.add('match');
+    const v = dp[i][j], prev = dp[i-1][j-1];
+    box.innerHTML = `<span class="tag tag-match">字符相等</span>
+      <code>text1[${i-1}]='${text1[i-1]}'</code> == <code>text2[${j-1}]='${text2[j-1]}'</code>
+      &nbsp;→&nbsp; 两字符匹配，在左上角 <code>dp[${i-1}][${j-1}]=${prev}</code> 基础上 +1
+      &nbsp;→&nbsp; <code>dp[${i}][${j}] = ${prev} + 1 = <strong>${v}</strong></code>`;
+  } else if (type === 'nomatch') {
+    box.classList.add('nomatch');
+    const v = dp[i][j], up = dp[i-1][j], left = dp[i][j-1];
+    box.innerHTML = `<span class="tag tag-nomatch">字符不等</span>
+      <code>text1[${i-1}]='${text1[i-1]}'</code> ≠ <code>text2[${j-1}]='${text2[j-1]}'</code>
+      &nbsp;→&nbsp; 取 max(上 <code>${up}</code>, 左 <code>${left}</code>)
+      &nbsp;=&nbsp; <code>dp[${i}][${j}] = <strong>${v}</strong></code>`;
+  } else if (type === 'done') {
+    box.classList.add('done');
+    box.innerHTML = `<span class="tag tag-done">完成</span>
+      DP 表格填写完毕！右下角 <code>dp[${m}][${n}]</code> 即为答案：
+      &nbsp;<span class="result-badge">${dp[m][n]}</span>`;
+  }
+}
+
+function updateProgress() {
+  const total = steps.length;
+  const pct = total === 0 ? 100 : Math.round(stepIdx / total * 100);
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+
+function step() {
+  if (stepIdx >= steps.length) return;
+
+  const {i, j} = steps[stepIdx];
+  const matched = text1[i-1] === text2[j-1];
+
+  if (matched) {
+    dp[i][j] = dp[i-1][j-1] + 1;
+  } else {
+    dp[i][j] = Math.max(dp[i-1][j], dp[i][j-1]);
+  }
+
+  stepIdx++;
+  const isDone = stepIdx >= steps.length;
+
+  renderChars(i, j);
+  renderTable(i, j, isDone);
+  updateProgress();
+
+  if (isDone) {
+    setExplain('done');
+    document.getElementById('btnStep').disabled = true;
+    if (isAuto) { clearInterval(autoTimer); isAuto = false; document.getElementById('btnAuto').textContent = '▶ 自动'; }
+  } else {
+    setExplain(matched ? 'match' : 'nomatch', i, j);
+  }
+}
+
+function toggleAuto() {
+  if (isAuto) {
+    clearInterval(autoTimer);
+    isAuto = false;
+    document.getElementById('btnAuto').textContent = '▶ 自动';
+  } else {
+    if (stepIdx >= steps.length) init();
+    isAuto = true;
+    document.getElementById('btnAuto').textContent = '⏸ 暂停';
+    const speed = parseInt(document.getElementById('speedRange').value);
+    autoTimer = setInterval(() => {
+      if (stepIdx >= steps.length) {
+        clearInterval(autoTimer);
+        isAuto = false;
+        document.getElementById('btnAuto').textContent = '▶ 自动';
+        return;
+      }
+      step();
+    }, speed);
+  }
+}
+
+init();
+</script>
+</body>
+</html>

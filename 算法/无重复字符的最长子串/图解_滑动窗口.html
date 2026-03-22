@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>无重复字符的最长子串 · 滑动窗口图解</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Sans+SC:wght@300;400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --border: #21262d;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --red: #f85149;
+    --yellow: #d29922;
+    --purple: #bc8cff;
+    --orange: #ffa657;
+    --text: #c9d1d9;
+    --muted: #484f58;
+    --win-bg: #1c2128;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans SC', sans-serif;
+    min-height: 100vh;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(88,166,255,.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(88,166,255,.03) 1px, transparent 1px);
+    background-size: 32px 32px;
+    pointer-events: none; z-index: 0;
+  }
+
+  .wrap { position: relative; z-index: 1; max-width: 960px; margin: 0 auto; padding: 40px 20px 80px; }
+
+  /* 标题 */
+  .hero { text-align: center; margin-bottom: 48px; }
+  .lc-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: #ffa65722; border: 1px solid #ffa65744;
+    border-radius: 8px; padding: 4px 14px;
+    font-size: 12px; color: var(--orange); margin-bottom: 16px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .hero h1 {
+    font-size: clamp(22px, 4vw, 40px); font-weight: 900;
+    background: linear-gradient(135deg, #58a6ff, #bc8cff);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text; margin-bottom: 10px;
+  }
+  .hero p { color: var(--muted); font-size: 14px; }
+
+  /* 卡片 */
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 18px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-title::before { content:''; width:3px; height:14px; background:var(--accent); border-radius:2px; display:block; }
+
+  /* ── 输入区 ── */
+  .input-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .str-input {
+    flex: 1; min-width: 180px;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 14px;
+    color: var(--text); font-family: 'JetBrains Mono', monospace;
+    font-size: 15px; outline: none; transition: border-color .2s;
+  }
+  .str-input:focus { border-color: var(--accent); }
+  .preset-btn {
+    padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border);
+    background: transparent; color: var(--muted); font-family: inherit;
+    font-size: 12px; cursor: pointer; transition: all .2s;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .preset-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── 字符格子 ── */
+  .chars-area { margin: 8px 0 4px; }
+  .chars-row {
+    display: flex; gap: 6px; flex-wrap: wrap;
+    align-items: flex-end; min-height: 90px;
+    padding: 12px 0 8px;
+  }
+  .char-col { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .char-idx { font-size: 10px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+
+  .char-box {
+    width: 44px; height: 44px;
+    border-radius: 8px; border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px; font-weight: 700;
+    background: var(--win-bg);
+    color: var(--text);
+    transition: all .35s cubic-bezier(.4,0,.2,1);
+    position: relative;
+  }
+  .char-box.in-window {
+    border-color: var(--accent);
+    background: #58a6ff18;
+    color: var(--accent);
+    box-shadow: 0 0 0 3px #58a6ff20;
+  }
+  .char-box.is-right {
+    border-color: var(--green);
+    background: #3fb95022;
+    color: var(--green);
+    box-shadow: 0 0 0 4px #3fb95028;
+  }
+  .char-box.is-duplicate {
+    border-color: var(--red);
+    background: #f8514922;
+    color: var(--red);
+    animation: shake .4s ease;
+  }
+  .char-box.is-best {
+    border-color: var(--yellow);
+    background: #d2992222;
+  }
+  .char-box.done { border-color: var(--green); background: #3fb95015; color: var(--green); }
+
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+  }
+
+  .ptr-label {
+    font-size: 10px; font-family: 'JetBrains Mono', monospace;
+    height: 14px; text-align: center; font-weight: 700;
+    transition: all .3s;
+  }
+  .ptr-left { color: var(--purple); }
+  .ptr-right { color: var(--green); }
+  .ptr-both { color: var(--orange); }
+
+  /* ── 状态信息 ── */
+  .info-row {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 16px 0;
+  }
+  .info-box {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px; text-align: center;
+  }
+  .info-label { font-size: 10px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+  .info-val {
+    font-size: 26px; font-weight: 900; font-family: 'JetBrains Mono', monospace;
+    transition: all .3s;
+  }
+  .info-val.green { color: var(--green); }
+  .info-val.blue { color: var(--accent); }
+  .info-val.yellow { color: var(--yellow); }
+
+  /* ── HashMap 可视化 ── */
+  .hashmap-area {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px;
+  }
+  .hashmap-title { font-size: 11px; color: var(--muted); margin-bottom: 10px; font-family: 'JetBrains Mono', monospace; }
+  .hashmap-entries { display: flex; flex-wrap: wrap; gap: 8px; min-height: 36px; }
+  .hm-entry {
+    display: flex; align-items: center; gap: 0;
+    border-radius: 6px; overflow: hidden;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    border: 1px solid var(--border);
+    transition: all .3s;
+  }
+  .hm-key {
+    padding: 5px 10px; background: #58a6ff18; color: var(--accent);
+    font-weight: 700;
+  }
+  .hm-val { padding: 5px 10px; color: var(--text); background: var(--win-bg); }
+  .hm-entry.active { border-color: var(--green); }
+  .hm-entry.active .hm-key { background: #3fb95022; color: var(--green); }
+  .hm-entry.stale { border-color: var(--muted); opacity: .5; }
+
+  /* ── 状态栏 ── */
+  .status {
+    margin: 14px 0 0;
+    padding: 12px 16px; border-radius: 8px;
+    font-size: 13px; line-height: 1.6;
+    background: var(--win-bg); border: 1px solid var(--border);
+    color: var(--muted); min-height: 48px;
+    font-family: 'JetBrains Mono', monospace;
+    transition: all .3s;
+  }
+  .status.info { border-color: var(--accent); color: var(--accent); }
+  .status.success { border-color: var(--green); color: var(--green); }
+  .status.warn { border-color: var(--red); color: var(--red); }
+  .status.done { border-color: var(--yellow); color: var(--yellow); }
+
+  /* ── 控制按钮 ── */
+  .ctrl-row { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; align-items: center; }
+  .btn {
+    padding: 9px 22px; border-radius: 8px; border: 1px solid;
+    font-family: inherit; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: all .25s; white-space: nowrap;
+  }
+  .btn:disabled { opacity: .35; cursor: not-allowed; }
+  .btn-blue { border-color: var(--accent); background: #58a6ff15; color: var(--accent); }
+  .btn-blue:hover:not(:disabled) { background: #58a6ff28; }
+  .btn-green { border-color: var(--green); background: #3fb95015; color: var(--green); }
+  .btn-green:hover:not(:disabled) { background: #3fb95028; }
+  .btn-muted { border-color: var(--border); background: transparent; color: var(--muted); }
+  .btn-muted:hover:not(:disabled) { border-color: var(--text); color: var(--text); }
+
+  .speed-label { font-size: 12px; color: var(--muted); margin-left: 6px; }
+  .speed-range { accent-color: var(--accent); cursor: pointer; width: 80px; }
+
+  /* ── 最佳窗口展示 ── */
+  .best-window {
+    display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+    padding: 10px 0 2px;
+  }
+  .best-char {
+    width: 36px; height: 36px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 700;
+    border: 2px solid var(--yellow); background: #d2992218; color: var(--yellow);
+    animation: popIn .3s ease;
+  }
+  @keyframes popIn {
+    from { transform: scale(.5); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  /* ── 代码 ── */
+  .code-block {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+    padding: 18px 20px; font-family: 'JetBrains Mono', monospace;
+    font-size: 13px; line-height: 2; overflow-x: auto;
+  }
+  .hl { background: #58a6ff18; border-left: 3px solid var(--accent); margin: 0 -20px; padding: 0 17px; display: block; }
+  .kw { color: #ff7b72; }
+  .fn { color: #d2a8ff; }
+  .cmt { color: #8b949e; font-style: italic; }
+  .num { color: var(--orange); }
+  .str { color: #a5d6ff; }
+  .cls { color: #ffa657; }
+
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <div class="lc-badge">LeetCode #3 · 中等</div>
+    <h1>无重复字符的最长子串</h1>
+    <p>滑动窗口 · HashMap · 交互式图解</p>
+  </div>
+
+  <!-- 输入 -->
+  <div class="card">
+    <div class="card-title">输入字符串</div>
+    <div class="input-row">
+      <input class="str-input" id="strInput" value="abcabcbb" maxlength="20" placeholder="输入字符串...">
+      <button class="preset-btn" onclick="setPreset('abcabcbb')">abcabcbb</button>
+      <button class="preset-btn" onclick="setPreset('bbbbb')">bbbbb</button>
+      <button class="preset-btn" onclick="setPreset('pwwkew')">pwwkew</button>
+      <button class="preset-btn" onclick="setPreset('dvdf')">dvdf</button>
+      <button class="preset-btn" onclick="setPreset('abba')">abba</button>
+    </div>
+  </div>
+
+  <!-- 主演示区 -->
+  <div class="card">
+    <div class="card-title">滑动窗口可视化</div>
+
+    <div class="chars-area">
+      <div class="chars-row" id="charsRow"></div>
+    </div>
+
+    <div style="display:flex;gap:14px;font-size:11px;font-family:'JetBrains Mono',monospace;flex-wrap:wrap;margin-bottom:4px">
+      <span style="color:var(--purple)">■ left 指针</span>
+      <span style="color:var(--green)">■ right 指针</span>
+      <span style="color:var(--accent)">■ 窗口内字符</span>
+      <span style="color:var(--red)">■ 重复字符</span>
+      <span style="color:var(--yellow)">■ 最优窗口</span>
+    </div>
+
+    <div class="info-row">
+      <div class="info-box">
+        <div class="info-label">left 指针</div>
+        <div class="info-val blue" id="infoLeft">0</div>
+      </div>
+      <div class="info-box">
+        <div class="info-label">right 指针</div>
+        <div class="info-val green" id="infoRight">-</div>
+      </div>
+      <div class="info-box">
+        <div class="info-label">最大长度</div>
+        <div class="info-val yellow" id="infoMax">0</div>
+      </div>
+    </div>
+
+    <div class="hashmap-area">
+      <div class="hashmap-title">// HashMap&lt;Character, Integer&gt; — 字符 → 最后出现的索引</div>
+      <div class="hashmap-entries" id="hmEntries">
+        <span style="color:var(--muted);font-size:12px;font-family:'JetBrains Mono',monospace">（空）</span>
+      </div>
+    </div>
+
+    <div class="status" id="status">点击「下一步」开始演示，或「自动播放」自动推进</div>
+
+    <div class="ctrl-row">
+      <button class="btn btn-blue" id="btnInit" onclick="initDemo()">▶ 初始化</button>
+      <button class="btn btn-green" id="btnNext" onclick="nextStep()" disabled>下一步 →</button>
+      <button class="btn btn-blue" id="btnAuto" onclick="toggleAuto()" disabled>⚡ 自动播放</button>
+      <button class="btn btn-muted" id="btnReset" onclick="resetDemo()">↺ 重置</button>
+      <span class="speed-label">速度</span>
+      <input class="speed-range" type="range" id="speedRange" min="1" max="5" value="3">
+    </div>
+  </div>
+
+  <!-- 最佳子串 -->
+  <div class="card" id="bestCard" style="display:none">
+    <div class="card-title">最长无重复子串</div>
+    <div class="best-window" id="bestWindow"></div>
+    <div style="margin-top:12px;font-size:13px;color:var(--muted)">长度 = <span style="color:var(--yellow);font-weight:700;font-family:'JetBrains Mono',monospace" id="bestLen">0</span></div>
+  </div>
+
+  <!-- 代码 -->
+  <div class="card">
+    <div class="card-title">Java 实现</div>
+    <div class="code-block" id="codeBlock">
+<span class="kw">public int</span> <span class="fn">lengthOfLongestSubstring</span>(<span class="cls">String</span> s) {
+    <span class="cls">Map</span>&lt;<span class="cls">Character</span>, <span class="cls">Integer</span>&gt; map = <span class="kw">new</span> <span class="cls">HashMap</span>&lt;&gt;();
+    <span class="kw">int</span> maxLen = <span class="num">0</span>;
+    <span class="kw">int</span> left = <span class="num">0</span>;
+
+    <span class="kw">for</span> (<span class="kw">int</span> right = <span class="num">0</span>; right &lt; s.length(); right++) {
+        <span class="kw">char</span> c = s.charAt(right);
+
+        <span class="cmt">// 若字符已在窗口内出现，收缩左边界</span>
+        <span class="kw">if</span> (map.containsKey(c) &amp;&amp; map.get(c) &gt;= left) {
+            left = map.get(c) + <span class="num">1</span>;
+        }
+
+        map.put(c, right);  <span class="cmt">// 更新字符最新索引</span>
+        maxLen = <span class="cls">Math</span>.max(maxLen, right - left + <span class="num">1</span>);
+    }
+
+    <span class="kw">return</span> maxLen;
+}
+    </div>
+  </div>
+
+  <!-- 要点说明 -->
+  <div class="card">
+    <div class="card-title">核心要点</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">
+      <div style="padding:14px;border-radius:10px;border:1px solid var(--border);background:var(--bg)">
+        <div style="color:var(--accent);font-size:12px;font-weight:700;margin-bottom:8px">为什么用 max(left, pos+1)?</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.8">
+          字符串 <code style="color:var(--orange)">"abba"</code> 中，处理第2个 <code style="color:var(--orange)">'a'</code> 时，
+          'a' 上次在 index=0，但 left 已经在 2 了。<br>
+          若直接 left=0+1=1，left 会<span style="color:var(--red)">后退</span>，引入重复字符。<br>
+          所以 left 只能<span style="color:var(--green)">前进，不能后退</span>。
+        </div>
+      </div>
+      <div style="padding:14px;border-radius:10px;border:1px solid var(--border);background:var(--bg)">
+        <div style="color:var(--green);font-size:12px;font-weight:700;margin-bottom:8px">窗口大小 = right - left + 1</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.8">
+          窗口 [left, right] 是闭区间，包含两端。<br>
+          每次 right 向右移动一位，都更新最大长度。<br>
+          <code style="color:var(--accent)">maxLen = Math.max(maxLen, right - left + 1)</code>
+        </div>
+      </div>
+      <div style="padding:14px;border-radius:10px;border:1px solid var(--border);background:var(--bg)">
+        <div style="color:var(--yellow);font-size:12px;font-weight:700;margin-bottom:8px">时间复杂度 O(n)</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.8">
+          left 和 right 都只从左向右移动，各自最多移动 n 次。<br>
+          HashMap 的 put/get 均为 O(1)。<br>
+          整体时间复杂度为 <span style="color:var(--yellow)">O(n)</span>，空间 O(min(m,n))。
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let s = '';
+let steps = [];
+let stepIdx = -1;
+let autoTimer = null;
+let bestLeft = 0, bestRight = -1;
+
+function setPreset(val) {
+  document.getElementById('strInput').value = val;
+  resetDemo();
+}
+
+function getSpeed() {
+  const v = parseInt(document.getElementById('speedRange').value);
+  return [900, 650, 450, 280, 120][v - 1];
+}
+
+// 预先计算所有步骤
+function computeSteps(str) {
+  const stps = [];
+  const map = {};
+  let maxLen = 0, left = 0;
+  let bestL = 0, bestR = -1;
+
+  stps.push({ type: 'init', left: 0, right: -1, map: {}, maxLen: 0, msg: `初始化：left=0，right 从 -1 开始向右扩张`, msgType: 'info' });
+
+  for (let right = 0; right < str.length; right++) {
+    const c = str[right];
+    let isDup = false;
+    let oldLeft = left;
+
+    if (map[c] !== undefined && map[c] >= left) {
+      // 重复，先标记
+      isDup = true;
+      stps.push({
+        type: 'duplicate',
+        left, right, map: {...map}, maxLen, char: c, dupIdx: map[c],
+        msg: `right=${right} 遇到重复字符 '${c}'（上次在 index=${map[c]}）→ left 从 ${left} 跳至 ${map[c]+1}`,
+        msgType: 'warn'
+      });
+      left = map[c] + 1;
+    }
+
+    map[c] = right;
+    const winLen = right - left + 1;
+    const updated = winLen > maxLen;
+    if (updated) {
+      maxLen = winLen;
+      bestL = left; bestR = right;
+    }
+
+    stps.push({
+      type: 'move',
+      left, right, map: {...map}, maxLen,
+      updated, char: c, isDup,
+      msg: updated
+        ? `right=${right}，纳入 '${c}'，窗口 [${left},${right}]，长度 ${winLen} → 更新最大长度！`
+        : `right=${right}，纳入 '${c}'，窗口 [${left},${right}]，长度 ${winLen}`,
+      msgType: updated ? 'success' : 'info',
+      bestL, bestR
+    });
+  }
+
+  stps.push({
+    type: 'done', left, right: str.length - 1, map: {...map}, maxLen,
+    bestL, bestR,
+    msg: `✅ 完成！最长无重复子串长度 = ${maxLen}，子串 = "${str.slice(bestL, bestR+1)}"`,
+    msgType: 'done'
+  });
+
+  return stps;
+}
+
+function initDemo() {
+  s = document.getElementById('strInput').value.trim();
+  if (!s) { alert('请输入字符串'); return; }
+
+  steps = computeSteps(s);
+  stepIdx = 0;
+  bestLeft = 0; bestRight = -1;
+
+  document.getElementById('bestCard').style.display = 'none';
+  document.getElementById('btnNext').disabled = false;
+  document.getElementById('btnAuto').disabled = false;
+  document.getElementById('btnInit').disabled = true;
+
+  renderChars(s, { left: 0, right: -1 });
+  applyStep(steps[0]);
+}
+
+function renderChars(str, state) {
+  const row = document.getElementById('charsRow');
+  row.innerHTML = '';
+  for (let i = 0; i < str.length; i++) {
+    const col = document.createElement('div');
+    col.className = 'char-col';
+    col.id = 'col-' + i;
+
+    const ptr = document.createElement('div');
+    ptr.className = 'ptr-label';
+    ptr.id = 'ptr-' + i;
+    ptr.innerHTML = '&nbsp;';
+
+    const box = document.createElement('div');
+    box.className = 'char-box';
+    box.id = 'box-' + i;
+    box.textContent = str[i];
+
+    const idx = document.createElement('div');
+    idx.className = 'char-idx';
+    idx.textContent = i;
+
+    col.appendChild(ptr);
+    col.appendChild(box);
+    col.appendChild(idx);
+    row.appendChild(col);
+  }
+}
+
+function applyStep(step) {
+  const { left, right, map, maxLen, msgType, msg, type, bestL, bestR } = step;
+
+  // 更新指针标签
+  for (let i = 0; i < s.length; i++) {
+    const ptr = document.getElementById('ptr-' + i);
+    if (!ptr) continue;
+    if (i === left && i === right) {
+      ptr.textContent = 'L/R'; ptr.className = 'ptr-label ptr-both';
+    } else if (i === left) {
+      ptr.textContent = 'L'; ptr.className = 'ptr-label ptr-left';
+    } else if (i === right && right >= 0) {
+      ptr.textContent = 'R'; ptr.className = 'ptr-label ptr-right';
+    } else {
+      ptr.innerHTML = '&nbsp;'; ptr.className = 'ptr-label';
+    }
+  }
+
+  // 更新字符格子样式
+  for (let i = 0; i < s.length; i++) {
+    const box = document.getElementById('box-' + i);
+    if (!box) continue;
+    box.className = 'char-box';
+    if (type === 'done') {
+      if (i >= bestL && i <= bestR) box.classList.add('done');
+    } else if (type === 'duplicate' && i === right) {
+      box.classList.add('is-duplicate');
+    } else if (i === right && right >= 0) {
+      box.classList.add('is-right');
+    } else if (i >= left && i < right) {
+      box.classList.add('in-window');
+    }
+    // 最佳窗口标记
+    if (type !== 'done' && bestR >= 0 && i >= bestL && i <= bestR && !(i >= left && i <= right)) {
+      // 不标记（当前窗口覆盖）
+    }
+  }
+
+  // 更新 info
+  document.getElementById('infoLeft').textContent = left;
+  document.getElementById('infoRight').textContent = right >= 0 ? right : '-';
+  document.getElementById('infoMax').textContent = maxLen;
+
+  // 更新 HashMap
+  const hmEl = document.getElementById('hmEntries');
+  if (Object.keys(map).length === 0) {
+    hmEl.innerHTML = '<span style="color:var(--muted);font-size:12px;font-family:\'JetBrains Mono\',monospace">（空）</span>';
+  } else {
+    hmEl.innerHTML = '';
+    Object.entries(map).sort((a,b)=>a[1]-b[1]).forEach(([ch, idx]) => {
+      const entry = document.createElement('div');
+      const inWin = idx >= left;
+      entry.className = 'hm-entry' + (inWin ? ' active' : ' stale');
+      entry.innerHTML = `<div class="hm-key">'${ch}'</div><div class="hm-val">${idx}</div>`;
+      hmEl.appendChild(entry);
+    });
+  }
+
+  // 状态栏
+  const statusEl = document.getElementById('status');
+  statusEl.textContent = msg;
+  statusEl.className = 'status ' + (msgType || '');
+
+  // 完成
+  if (type === 'done') {
+    showBestWindow(bestL, bestR, maxLen);
+    document.getElementById('btnNext').disabled = true;
+    document.getElementById('btnAuto').textContent = '⚡ 自动播放';
+    if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+  }
+}
+
+function nextStep() {
+  stepIdx++;
+  if (stepIdx >= steps.length) { stepIdx = steps.length - 1; return; }
+  applyStep(steps[stepIdx]);
+}
+
+function toggleAuto() {
+  const btn = document.getElementById('btnAuto');
+  if (autoTimer) {
+    clearInterval(autoTimer);
+    autoTimer = null;
+    btn.textContent = '⚡ 自动播放';
+  } else {
+    btn.textContent = '⏸ 暂停';
+    autoTimer = setInterval(() => {
+      stepIdx++;
+      if (stepIdx >= steps.length) {
+        stepIdx = steps.length - 1;
+        clearInterval(autoTimer); autoTimer = null;
+        btn.textContent = '⚡ 自动播放';
+        return;
+      }
+      applyStep(steps[stepIdx]);
+    }, getSpeed());
+  }
+}
+
+function resetDemo() {
+  if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+  stepIdx = -1; steps = [];
+  document.getElementById('btnNext').disabled = true;
+  document.getElementById('btnAuto').disabled = true;
+  document.getElementById('btnInit').disabled = false;
+  document.getElementById('btnAuto').textContent = '⚡ 自动播放';
+  document.getElementById('charsRow').innerHTML = '';
+  document.getElementById('hmEntries').innerHTML = '<span style="color:var(--muted);font-size:12px;font-family:\'JetBrains Mono\',monospace">（空）</span>';
+  document.getElementById('infoLeft').textContent = '0';
+  document.getElementById('infoRight').textContent = '-';
+  document.getElementById('infoMax').textContent = '0';
+  document.getElementById('status').textContent = '点击「初始化」开始演示';
+  document.getElementById('status').className = 'status';
+  document.getElementById('bestCard').style.display = 'none';
+}
+
+function showBestWindow(l, r, len) {
+  const card = document.getElementById('bestCard');
+  const win = document.getElementById('bestWindow');
+  const lenEl = document.getElementById('bestLen');
+  win.innerHTML = '';
+  for (let i = l; i <= r; i++) {
+    const c = document.createElement('div');
+    c.className = 'best-char';
+    c.textContent = s[i];
+    c.style.animationDelay = (i - l) * 60 + 'ms';
+    win.appendChild(c);
+  }
+  lenEl.textContent = len;
+  card.style.display = 'block';
+}
+
+// 初始渲染
+document.getElementById('strInput').addEventListener('input', resetDemo);
+
+// 高亮代码行
+(function() {
+  const lines = document.getElementById('codeBlock').innerHTML.split('\n');
+  document.getElementById('codeBlock').innerHTML = lines.join('\n');
+})();
+</script>
+</body>
+</html>

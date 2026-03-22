@@ -1,10 +1,355 @@
-1.自我介绍
-2.挑一个你觉得做得好的项目，最大的难点在哪里，怎么解决的
-3.mysql锁，用什么语句查会加锁，什么语句查不会加锁，这个你有去想过吗
+# 腾讯一面题目整理
 
+## 面试题
 
+### 1. 自我介绍
 
-算法：
-1.最大岛屿数量
-2.
-3.二分查找（返回第一次出现的target的索引）<img width="1277" height="386" alt="image" src="https://github.com/user-attachments/assets/ab41dade-acb4-4380-8c85-1721c2011d43" />
+### 2. 挑一个你觉得做得好的项目，最大的难点在哪里，怎么解决的
+
+### 3. MySQL 锁：用什么语句查会加锁，什么语句查不会加锁？
+
+#### 基础知识
+
+**不加锁的查询（快照读）：**
+
+普通 `SELECT` 不会加锁，走的是 MVCC 多版本并发控制，读的是历史快照数据，不阻塞其他事务。适合查询店铺信息、评价列表等不需要强一致性的场景。
+
+```sql
+SELECT * FROM table WHERE id = 1;  -- 不加锁
+```
+
+**会加锁的查询（当前读）：**
+
+| 语句 | 锁类型 | 说明 |
+|---|---|---|
+| `SELECT ... FOR UPDATE` | 排他锁（X锁） | 其他事务不能读也不能写 |
+| `SELECT ... LOCK IN SHARE MODE` | 共享锁（S锁） | 其他事务可以读，但不能写 |
+| `INSERT / UPDATE / DELETE` | 排他锁（X锁） | 写操作自动加锁，无需手动指定 |
+
+#### 结合点评项目的场景
+
+在秒杀优惠券功能中遇到了**超卖问题**：最初用普通 SELECT 查库存，高并发下多个用户同时读到库存有余量，都去下单，导致库存扣成负数。
+
+**解决方案一：悲观锁（`SELECT ... FOR UPDATE`）**
+
+```sql
+BEGIN;
+SELECT stock FROM voucher WHERE id = ? FOR UPDATE;  -- 锁住这一行
+-- 检查库存 > 0，再扣减
+UPDATE voucher SET stock = stock - 1 WHERE id = ?;
+COMMIT;
+```
+
+查库存时锁住该行，其他线程必须等当前事务提交后才能操作，彻底避免超卖。
+
+**解决方案二：乐观锁（UPDATE 条件判断）**
+
+```sql
+UPDATE voucher SET stock = stock - 1 WHERE id = ? AND stock > 0;
+```
+
+利用数据库 UPDATE 的原子性，在条件里加 `stock > 0` 判断，不需要手动加锁，并发性能更好。
+
+#### 注意：索引影响锁的范围
+
+- **走索引**：加行锁，只锁住匹配的行
+- **不走索引**：退化为表锁，锁住整张表，严重影响并发性能
+
+```sql
+-- ✅ 走索引，只锁一行
+SELECT * FROM voucher WHERE id = 1 FOR UPDATE;
+
+-- ❌ 不走索引，锁全表，其他商品的操作也会被阻塞
+SELECT * FROM voucher WHERE stock = 50 FOR UPDATE;
+```
+
+所以在秒杀场景中，要确保 `FOR UPDATE` 的查询条件字段上有索引。
+
+---
+
+### 4. 你理解的 MySQL 锁机制是什么？
+
+MySQL 锁机制从三个维度理解：
+
+**按粒度分：**
+
+| 锁类型 | 说明 | 场景 |
+|---|---|---|
+| 表锁 | 锁住整张表 | MyISAM、无索引的 InnoDB 查询 |
+| 行锁 | 只锁住匹配的行 | InnoDB 走索引的查询，并发性能最好 |
+| 间隙锁（Gap Lock） | 锁住索引之间的空隙 | 防止幻读，RR 隔离级别下生效 |
+| Next-Key Lock | 行锁 + 间隙锁的组合 | InnoDB 默认锁，范围查询时使用 |
+
+**按模式分：**
+
+- **共享锁（S锁）**：允许多个事务同时读，不允许写
+- **排他锁（X锁）**：独占，其他事务既不能读（加锁读）也不能写
+
+**按时机分（结合业务理解）：**
+
+- **悲观锁**：先加锁再操作，适合写冲突高的场景（`SELECT FOR UPDATE`）
+- **乐观锁**：不加锁，操作时通过版本号/条件判断是否冲突，适合读多写少（`UPDATE ... WHERE stock > 0`）
+
+锁的范围取决于是否走索引：走索引加行锁，不走索引退化为表锁。
+
+---
+
+### 5. Redis 要实现的分布式锁是怎样的？
+
+单机 JVM 的 `synchronized` 只能锁住同一个进程内的线程，多个服务实例（多 JVM）场景下失效，需要分布式锁。
+
+**Redis 分布式锁的核心：用 `SET NX EX` 命令**
+
+```
+SET lock_key unique_value NX EX 30
+```
+
+- `NX`：只有 key 不存在时才设置，保证互斥
+- `EX 30`：30秒后自动过期，防止死锁（服务宕机也能自动释放）
+- `unique_value`：唯一标识（线程ID + UUID），释放锁时验证是自己加的锁
+
+**完整流程：**
+
+```
+加锁：SET lock_key uuid NX EX 30
+        ↓
+执行业务逻辑
+        ↓
+释放锁：判断 value == uuid，是则 DEL（用 Lua 保证原子性）
+```
+
+**必须注意的问题：**
+
+| 问题 | 解决方案 |
+|---|---|
+| 加锁和设过期时间不是原子操作 | 用 `SET NX EX` 一条命令，而非先 SET 再 EXPIRE |
+| 释放了别人的锁（业务超时，锁被别人拿走后自己又来删） | 释放前校验 value 是自己的，校验+删除用 Lua 保证原子性 |
+| 锁过期但业务未完成 | 看门狗机制（Redisson 自动续期） |
+
+---
+
+### 6. Redis 分布式锁中 Lua 脚本是怎么实现的？
+
+**为什么释放锁需要 Lua 脚本？**
+
+释放锁需要两步：判断 value 是否是自己的 → 删除。这两步如果不是原子的，会有问题：
+
+```
+线程A 判断 value == 自己的  ✅
+                              （此时A的锁恰好过期，线程B拿到锁）
+线程A 执行 DEL               ❌ 删掉了线程B的锁！
+```
+
+**Lua 脚本保证原子性：**
+
+```lua
+-- 释放锁的 Lua 脚本
+if redis.call('GET', KEYS[1]) == ARGV[1] then
+    return redis.call('DEL', KEYS[1])
+else
+    return 0
+end
+```
+
+**秒杀资格校验的 Lua 脚本：**
+
+```lua
+-- KEYS[1]=库存key, KEYS[2]=已购用户set, ARGV[1]=用户id
+local stock = tonumber(redis.call('GET', KEYS[1]))
+if stock <= 0 then
+    return 1  -- 库存不足
+end
+if redis.call('SISMEMBER', KEYS[2], ARGV[1]) == 1 then
+    return 2  -- 重复购买
+end
+redis.call('DECR', KEYS[1])
+redis.call('SADD', KEYS[2], ARGV[1])
+return 0  -- 成功
+```
+
+Redis 执行 Lua 脚本是单线程串行执行的，脚本内的多条命令天然是原子的，不会被其他命令插入。
+
+---
+
+### 7. MySQL 能实现分布式锁吗？
+
+能，但性能差，了解思路即可。
+
+**实现方式：用一张锁表**
+
+```sql
+CREATE TABLE distributed_lock (
+    lock_name VARCHAR(64) PRIMARY KEY,
+    owner     VARCHAR(64),
+    expire_at DATETIME
+);
+
+-- 加锁（INSERT 失败说明锁已被占用）
+INSERT INTO distributed_lock (lock_name, owner, expire_at)
+VALUES ('order_lock', 'uuid_123', NOW() + INTERVAL 30 SECOND);
+
+-- 释放锁
+DELETE FROM distributed_lock WHERE lock_name='order_lock' AND owner='uuid_123';
+```
+
+**和 Redis 分布式锁对比：**
+
+| | MySQL 分布式锁 | Redis 分布式锁 |
+|---|---|---|
+| 性能 | 低（磁盘 IO，连接开销） | 高（内存操作） |
+| 可靠性 | 高（数据持久化） | 中（需配置持久化） |
+| 实现复杂度 | 简单 | 简单（有 Redisson 封装） |
+| 适用场景 | 低频、对一致性要求极高 | 高并发场景 |
+
+实际项目中几乎不用 MySQL 分布式锁，高并发首选 Redis，对一致性要求极高用 ZooKeeper。
+
+---
+
+### 8. Redis 常用的数据结构有哪些？
+
+| 数据结构 | 底层实现 | 典型使用场景 |
+|---|---|---|
+| String | SDS 动态字符串 | 缓存、计数器、分布式锁、Token |
+| Hash | 压缩列表 / 哈希表 | 存储对象（用户信息、商品详情） |
+| List | 压缩列表 / 双向链表 | 消息队列、最新动态列表 |
+| Set | 哈希表 / 整数集合 | 去重（已购用户）、共同关注、抽奖 |
+| ZSet（有序集合） | 压缩列表 / 跳表 | 排行榜、延迟队列、热门推荐 |
+
+**点评项目中的具体使用：**
+
+- `String`：缓存店铺信息，`SET shop:1 {json} EX 3600`
+- `Set`：秒杀记录已购用户，`SADD seckill:users userId`
+- `ZSet`：实现 Feed 流，score 存时间戳，按时间排序
+
+---
+
+### 9. 了解 Redis 大 Key 问题吗？为什么会出现？Redis 会发生什么？
+
+**什么是大 Key：**
+
+- String 类型：value 超过 **10KB**
+- Hash/List/Set/ZSet：元素数量超过 **5000个**，或总大小超过 **10MB**
+
+**为什么会出现：**
+
+- 业务设计不合理：把大量数据存一个 Key（如把所有用户存一个 Hash）
+- 数据无限增长没有清理：List 只入不出，Set 只加不删
+- 序列化对象过大：把复杂对象直接序列化存 String
+
+**大 Key 的危害：**
+
+| 问题 | 原因 |
+|---|---|
+| **阻塞 Redis 主线程** | Redis 单线程，读写大 Key 耗时长，其他命令全部等待 |
+| **内存不均匀（集群）** | 某个节点内存暴涨，负载不均 |
+| **网络传输慢** | 大 Key 传输占满带宽 |
+| **删除卡顿** | 直接 DEL 大 Key 会阻塞，应用 `UNLINK`（异步删除） |
+
+**解决方案：**
+
+- 拆分大 Key：`Hash` 按字段分多个小 Key
+- 设置合理过期时间
+- 删除时用 `UNLINK` 代替 `DEL`（异步非阻塞）
+- 定期扫描检测（`redis-cli --bigkeys`）
+
+---
+
+### 10. 了解 Redis 持久化相关内容吗？
+
+Redis 有两种持久化方式：**RDB 快照** 和 **AOF 日志**，可以单独用也可以混合使用。
+
+**RDB（Redis Database Backup）- 快照：**
+
+按配置的时间间隔，把内存中的数据全量序列化成二进制文件（dump.rdb）保存到磁盘。
+
+```
+# redis.conf 配置
+save 900 1      # 900秒内有1次写操作就触发
+save 300 10     # 300秒内有10次写操作就触发
+save 60 10000   # 60秒内有10000次写操作就触发
+```
+
+- 优点：文件紧凑，恢复速度快，对性能影响小（fork 子进程写）
+- 缺点：两次快照之间宕机会**丢失数据**
+
+**AOF（Append Only File）- 追加日志：**
+
+把每条写命令以文本形式追加到 aof 文件，重启时重放所有命令恢复数据。
+
+```
+# redis.conf 配置
+appendonly yes
+appendfsync everysec   # 每秒刷盘一次（推荐，最多丢1秒数据）
+# appendfsync always   # 每条命令都刷盘（最安全，性能最差）
+# appendfsync no       # 由 OS 决定（性能最好，可能丢较多数据）
+```
+
+- 优点：数据丢失最少（everysec 最多丢 1 秒）
+- 缺点：文件比 RDB 大，恢复慢
+
+**混合持久化（Redis 4.0+，推荐）：**
+
+AOF 重写时，先写 RDB 格式的全量数据，再追加增量 AOF 命令，兼顾恢复速度和数据完整性。
+
+---
+
+### 11. 平时会怎么用 AOF 和快照做 Redis 持久化？
+
+实际项目中通常开启混合持久化：
+
+```
+# redis.conf
+appendonly yes
+aof-use-rdb-preamble yes   # 开启混合持久化
+appendfsync everysec        # AOF 每秒刷盘
+```
+
+**选择策略：**
+
+| 场景 | 推荐方式 |
+|---|---|
+| 缓存（允许丢数据） | 只用 RDB，重启从数据库重建缓存 |
+| 数据不能丢失（分布式锁、计数器） | AOF everysec 或混合持久化 |
+| 快速恢复（大数据量） | RDB（恢复比 AOF 快很多） |
+| 生产环境通用 | 混合持久化（两者优势兼得） |
+
+---
+
+### 12. 快照存储间隔内会丢数据吗？
+
+**会，这是 RDB 的固有缺陷。**
+
+```
+00:00  触发快照，保存成功（数据D1）
+         ↓
+00:01  写入数据 D2、D3、D4
+         ↓
+00:04  Redis 宕机！
+         ↓
+恢复后：只有 D1，D2/D3/D4 全部丢失
+```
+
+**快照本身不会"失效"，已保存的快照是完整的**，只是宕机时未来得及保存的那部分数据会丢失。
+
+**怎么权衡：**
+
+| 方案 | 最大丢失数据量 | 性能影响 |
+|---|---|---|
+| 只用 RDB（60秒间隔） | 最多 60 秒的数据 | 最小 |
+| AOF everysec | 最多 1 秒的数据 | 较小 |
+| AOF always | 几乎不丢 | 最大（每条命令都刷盘） |
+| 混合持久化 | 最多 1 秒（AOF部分） | 适中 |
+
+实际生产中，纯缓存场景可以接受 RDB 丢几秒数据；对数据完整性要求高的场景用混合持久化或 AOF everysec。
+
+---
+
+## 算法题
+
+### 1. 最大岛屿数量
+
+### 2. （待补充）
+
+### 3. 二分查找（返回第一次出现的 target 的索引）
+
+<img width="1277" height="386" alt="image" src="https://github.com/user-attachments/assets/ab41dade-acb4-4380-8c85-1721c2011d43" />

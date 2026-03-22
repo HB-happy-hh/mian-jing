@@ -1,6 +1,5 @@
-package 岛屿数量;
 
-public class solution {
+class NumIslands {
     public static int numIslands(char[][] grid) {
         int count = 0;
         for (int i = 0; i < grid.length; i++) {
@@ -28,7 +27,7 @@ public class solution {
     }
 
     public static void main(String[] args) {
-        // 示例 1，答案应为 1
+        // 示例 1，答案应为 2
         char[][] grid1 = {
             {'1','1','1','1','0'},
             {'1','1','0','1','0'},

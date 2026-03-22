@@ -1,12 +1,10 @@
-package 重排链表;
-
 class ListNode {
     int val;
     ListNode next;
     ListNode(int val) { this.val = val; }
 }
 
-class Solution {
+public class ReorderList {
     public void reorderList(ListNode head) {
         if (head == null || head.next == null) return;
 
@@ -96,7 +94,7 @@ class Solution {
     }
 
     public static void main(String[] args) {
-        Solution sol = new Solution();
+        ReorderList sol = new ReorderList();
 
         // 示例1：[1,2,3,4] → [1,4,2,3]
         ListNode head1 = sol.build(new int[]{1, 2, 3, 4});

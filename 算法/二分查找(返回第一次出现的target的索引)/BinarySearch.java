@@ -1,6 +1,8 @@
-public class Solution {
 
-    public static int searchFirstOccurrence(int[] nums, int target) {
+
+class BinarySearch {
+
+   public static int searchFirstOccurrence(int[] nums, int target) {
         int left = 0, right = nums.length - 1;
         int result = -1;
 

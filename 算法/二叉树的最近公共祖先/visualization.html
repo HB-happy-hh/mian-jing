@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>二叉树最近公共祖先 - 可视化</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Sans+SC:wght@400;700;900&display=swap');
+
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #7d8590;
+      --accent: #58a6ff;
+      --green: #3fb950;
+      --yellow: #d29922;
+      --red: #f85149;
+      --purple: #bc8cff;
+      --orange: #ffa657;
+      --teal: #39d353;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Noto Sans SC', sans-serif;
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      color: var(--accent);
+      margin-bottom: 4px;
+    }
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-bottom: 24px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 20px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    .panel-title {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+
+    /* Controls */
+    .controls {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+      align-items: center;
+    }
+    .select-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    label { font-size: 0.85rem; color: var(--muted); }
+    select {
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    select:focus { outline: none; border-color: var(--accent); }
+
+    .btn {
+      padding: 7px 18px;
+      border-radius: 6px;
+      border: none;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: 'Noto Sans SC', sans-serif;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #0d1117;
+    }
+    .btn-primary:hover { background: #79c0ff; }
+    .btn-secondary {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { color: var(--text); border-color: var(--text); }
+
+    /* SVG Tree */
+    #tree-svg {
+      width: 100%;
+      height: 360px;
+      display: block;
+    }
+
+    .node-circle {
+      fill: var(--surface);
+      stroke: var(--border);
+      stroke-width: 2;
+      transition: all 0.4s ease;
+    }
+    .node-text {
+      fill: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 15px;
+      font-weight: 700;
+      text-anchor: middle;
+      dominant-baseline: central;
+      pointer-events: none;
+    }
+    .edge {
+      stroke: var(--border);
+      stroke-width: 2;
+      transition: stroke 0.4s ease;
+    }
+
+    /* Call stack */
+    .stack-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .stack-item {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      color: var(--muted);
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .stack-item.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(88,166,255,0.06);
+    }
+    .stack-item.returning {
+      border-color: var(--green);
+      color: var(--green);
+      background: rgba(63,185,80,0.06);
+    }
+    .stack-item .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* Log */
+    .log-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .log-item {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      padding: 4px 8px;
+      border-radius: 4px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .log-item.info { color: var(--accent); }
+    .log-item.found { color: var(--green); background: rgba(63,185,80,0.08); }
+    .log-item.base { color: var(--yellow); }
+    .log-item.lca { color: var(--purple); background: rgba(188,140,255,0.1); font-weight: 700; }
+
+    /* Legend */
+    .legend {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+    .legend-dot {
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* Progress */
+    .progress-bar {
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 2px;
+      transition: width 0.3s;
+      width: 0%;
+    }
+
+    /* Result badge */
+    .result-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(188,140,255,0.15);
+      border: 1px solid var(--purple);
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 0.9rem;
+      color: var(--purple);
+      font-weight: 700;
+      margin-top: 12px;
+      opacity: 0;
+      transform: translateY(6px);
+      transition: all 0.4s;
+    }
+    .result-badge.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Code block */
+    .code-block {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      line-height: 1.8;
+      white-space: pre;
+      overflow-x: auto;
+    }
+    .code-line { color: var(--muted); transition: all 0.3s; border-radius: 3px; padding: 0 4px; }
+    .code-line.hl-base { color: var(--yellow); background: rgba(210,153,34,0.1); }
+    .code-line.hl-left { color: var(--accent); background: rgba(88,166,255,0.08); }
+    .code-line.hl-right { color: var(--accent); background: rgba(88,166,255,0.08); }
+    .code-line.hl-both { color: var(--purple); background: rgba(188,140,255,0.1); }
+    .code-line.hl-return { color: var(--green); background: rgba(63,185,80,0.08); }
+  </style>
+</head>
+<body>
+
+<div style="max-width:1100px;margin:0 auto;">
+  <h1>二叉树的最近公共祖先 (LCA)</h1>
+  <div class="subtitle">LeetCode 236 · 后序递归可视化 · 逐步观察调用过程</div>
+
+  <div class="controls">
+    <div class="select-group">
+      <label>节点 p</label>
+      <select id="sel-p">
+        <option value="5">5</option>
+        <option value="1">1</option>
+        <option value="6">6</option>
+        <option value="2">2</option>
+        <option value="7">7</option>
+        <option value="4">4</option>
+        <option value="0">0</option>
+        <option value="8">8</option>
+      </select>
+    </div>
+    <div class="select-group">
+      <label>节点 q</label>
+      <select id="sel-q">
+        <option value="1">1</option>
+        <option value="5">5</option>
+        <option value="4">4</option>
+        <option value="6">6</option>
+        <option value="7">7</option>
+        <option value="2">2</option>
+        <option value="0">0</option>
+        <option value="8">8</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" id="btn-start">▶ 开始演示</button>
+    <button class="btn btn-secondary" id="btn-next" disabled>下一步 →</button>
+    <button class="btn btn-secondary" id="btn-auto" disabled>自动播放</button>
+    <button class="btn btn-secondary" id="btn-reset">重置</button>
+  </div>
+
+  <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+
+  <div class="layout">
+    <div>
+      <div class="panel" style="margin-bottom:16px;">
+        <div class="panel-title">二叉树结构</div>
+        <svg id="tree-svg" viewBox="0 0 560 340"></svg>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#58a6ff"></div>当前访问</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#ffa657"></div>目标节点 p / q</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#3fb950"></div>已找到 p 或 q</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#bc8cff"></div>最近公共祖先 (LCA)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#30363d"></div>返回 null</div>
+        </div>
+        <div class="result-badge" id="result-badge">🎯 最近公共祖先：节点 <span id="result-val">-</span></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">算法代码</div>
+        <div class="code-block" id="code-block">
+<span class="code-line" id="cl-0">def lowestCommonAncestor(root, p, q):</span>
+<span class="code-line" id="cl-1">    if not root or root == p or root == q:</span>
+<span class="code-line" id="cl-2">        return root</span>
+<span class="code-line" id="cl-3">    left  = lowestCommonAncestor(root.left,  p, q)</span>
+<span class="code-line" id="cl-4">    right = lowestCommonAncestor(root.right, p, q)</span>
+<span class="code-line" id="cl-5">    if left and right:</span>
+<span class="code-line" id="cl-6">        return root</span>
+<span class="code-line" id="cl-7">    return left if left else right</span></div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div class="panel">
+        <div class="panel-title">递归调用栈</div>
+        <div class="stack-list" id="stack-list"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">执行日志</div>
+        <div class="log-list" id="log-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── 树结构 ────────────────────────────────────────────────────────────
+const treeData = {
+  val: 3,
+  left: {
+    val: 5,
+    left:  { val: 6, left: null, right: null },
+    right: {
+      val: 2,
+      left:  { val: 7, left: null, right: null },
+      right: { val: 4, left: null, right: null }
+    }
+  },
+  right: {
+    val: 1,
+    left:  { val: 0, left: null, right: null },
+    right: { val: 8, left: null, right: null }
+  }
+};
+
+// ─── 布局计算 ─────────────────────────────────────────────────────────
+const positions = {};
+const W = 560, H = 340, R = 22;
+function layout(node, depth, left, right) {
+  if (!node) return;
+  const x = (left + right) / 2;
+  const y = 40 + depth * 80;
+  positions[node.val] = { x, y };
+  layout(node.left,  depth+1, left, (left+right)/2);
+  layout(node.right, depth+1, (left+right)/2, right);
+}
+layout(treeData, 0, 0, W);
+
+// ─── SVG rendering ────────────────────────────────────────────────────
+const svg = document.getElementById('tree-svg');
+const nodeColors = {};
+
+function drawTree(node, parent) {
+  if (!node) return;
+  if (parent) {
+    const l = document.createElementNS('http://www.w3.org/2000/svg','line');
+    l.setAttribute('x1', positions[parent.val].x);
+    l.setAttribute('y1', positions[parent.val].y);
+    l.setAttribute('x2', positions[node.val].x);
+    l.setAttribute('y2', positions[node.val].y);
+    l.setAttribute('class','edge');
+    l.setAttribute('id', `edge-${parent.val}-${node.val}`);
+    svg.appendChild(l);
+  }
+  drawTree(node.left,  node);
+  drawTree(node.right, node);
+
+  const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+  g.setAttribute('id', `node-g-${node.val}`);
+
+  const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+  c.setAttribute('cx', positions[node.val].x);
+  c.setAttribute('cy', positions[node.val].y);
+  c.setAttribute('r', R);
+  c.setAttribute('class','node-circle');
+  c.setAttribute('id', `node-${node.val}`);
+
+  const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+  t.setAttribute('x', positions[node.val].x);
+  t.setAttribute('y', positions[node.val].y);
+  t.setAttribute('class','node-text');
+  t.textContent = node.val;
+
+  g.appendChild(c); g.appendChild(t);
+  svg.appendChild(g);
+  nodeColors[node.val] = 'default';
+}
+drawTree(treeData, null);
+
+function setNodeColor(val, state) {
+  if (val === null) return;
+  const c = document.getElementById(`node-${val}`);
+  if (!c) return;
+  nodeColors[val] = state;
+  const map = {
+    default:  { fill: '#161b22', stroke: '#30363d', sw: 2 },
+    visiting: { fill: '#0d2340', stroke: '#58a6ff', sw: 3 },
+    target:   { fill: '#2d1a00', stroke: '#ffa657', sw: 3 },
+    found:    { fill: '#0d2318', stroke: '#3fb950', sw: 3 },
+    lca:      { fill: '#1f0f3a', stroke: '#bc8cff', sw: 4 },
+    null_ret: { fill: '#161b22', stroke: '#30363d', sw: 2 },
+  };
+  const s = map[state] || map.default;
+  c.style.fill = s.fill;
+  c.style.stroke = s.stroke;
+  c.style.strokeWidth = s.sw;
+}
+
+function resetAllColors() {
+  Object.keys(positions).forEach(v => setNodeColor(Number(v), 'default'));
+}
+
+// ─── Code highlight ───────────────────────────────────────────────────
+function highlightCode(lines) {
+  for (let i = 0; i <= 7; i++) {
+    const el = document.getElementById(`cl-${i}`);
+    el.className = 'code-line';
+  }
+  lines.forEach(({ idx, cls }) => {
+    const el = document.getElementById(`cl-${idx}`);
+    if (el) el.className = `code-line ${cls}`;
+  });
+}
+
+// ─── Log & Stack ──────────────────────────────────────────────────────
+function addLog(msg, type='info') {
+  const list = document.getElementById('log-list');
+  const item = document.createElement('div');
+  item.className = `log-item ${type}`;
+  item.textContent = msg;
+  list.appendChild(item);
+  list.scrollTop = list.scrollHeight;
+}
+
+let callStack = [];
+function pushStack(val) {
+  callStack.push(val);
+  renderStack();
+}
+function popStack() {
+  callStack.pop();
+  renderStack();
+}
+function renderStack() {
+  const list = document.getElementById('stack-list');
+  list.innerHTML = '';
+  [...callStack].reverse().forEach((v, i) => {
+    const item = document.createElement('div');
+    item.className = 'stack-item' + (i === 0 ? ' active' : '');
+    const dot = document.createElement('div');
+    dot.className = 'dot';
+    dot.style.background = i === 0 ? '#58a6ff' : '#30363d';
+    const txt = document.createElement('span');
+    txt.textContent = `lca(${v === null ? 'null' : v}, p, q)`;
+    item.appendChild(dot); item.appendChild(txt);
+    list.appendChild(item);
+  });
+}
+
+// ─── Step generator ───────────────────────────────────────────────────
+let steps = [];
+let stepIdx = 0;
+let autoTimer = null;
+
+function buildSteps(node, p, q) {
+  const out = [];
+  function rec(n) {
+    if (n === null) {
+      out.push({ type: 'enter_null' });
+      out.push({ type: 'base_null' });
+      return null;
+    }
+    out.push({ type: 'enter', val: n.val });
+    if (n.val === p || n.val === q) {
+      out.push({ type: 'base_found', val: n.val });
+      return n.val;
+    }
+    out.push({ type: 'go_left', val: n.val });
+    const left = rec(n.left);
+    out.push({ type: 'left_done', val: n.val, left });
+
+    out.push({ type: 'go_right', val: n.val });
+    const right = rec(n.right);
+    out.push({ type: 'right_done', val: n.val, right });
+
+    out.push({ type: 'judge', val: n.val, left, right });
+    if (left !== null && right !== null) {
+      out.push({ type: 'lca', val: n.val });
+      return n.val;
+    }
+    const ret = left !== null ? left : right;
+    out.push({ type: 'propagate', val: n.val, ret });
+    return ret;
+  }
+  rec(node);
+  return out;
+}
+
+// ─── Apply step ───────────────────────────────────────────────────────
+let p_val, q_val;
+let stackTrace = []; // mirrors call stack for display
+
+function applyStep(step) {
+  switch (step.type) {
+    case 'enter':
+      stackTrace.push(step.val);
+      renderStack2(stackTrace);
+      setNodeColor(step.val, 'visiting');
+      highlightCode([{idx:0,cls:'hl-left'},{idx:1,cls:'hl-left'}]);
+      addLog(`→ 进入节点 ${step.val}`, 'info');
+      break;
+    case 'enter_null':
+      stackTrace.push(null);
+      renderStack2(stackTrace);
+      highlightCode([{idx:1,cls:'hl-base'}]);
+      addLog(`→ 进入 null`, 'base');
+      break;
+    case 'base_null':
+      stackTrace.pop();
+      renderStack2(stackTrace);
+      highlightCode([{idx:1,cls:'hl-base'},{idx:2,cls:'hl-base'}]);
+      addLog(`← 返回 null`, 'base');
+      break;
+    case 'base_found':
+      highlightCode([{idx:1,cls:'hl-base'},{idx:2,cls:'hl-return'}]);
+      setNodeColor(step.val, 'found');
+      addLog(`← 节点 ${step.val} 是目标，返回 ${step.val}`, 'found');
+      stackTrace.pop();
+      renderStack2(stackTrace);
+      break;
+    case 'go_left':
+      highlightCode([{idx:3,cls:'hl-left'}]);
+      addLog(`  递归左子树 of ${step.val}`, 'info');
+      break;
+    case 'left_done':
+      highlightCode([{idx:3,cls:'hl-left'}]);
+      addLog(`  left = ${step.left === null ? 'null' : step.left}`, step.left !== null ? 'found' : 'base');
+      break;
+    case 'go_right':
+      highlightCode([{idx:4,cls:'hl-right'}]);
+      addLog(`  递归右子树 of ${step.val}`, 'info');
+      break;
+    case 'right_done':
+      highlightCode([{idx:4,cls:'hl-right'}]);
+      addLog(`  right = ${step.right === null ? 'null' : step.right}`, step.right !== null ? 'found' : 'base');
+      break;
+    case 'judge':
+      highlightCode([{idx:5,cls:'hl-both'}]);
+      addLog(`  判断：left=${step.left??'null'}, right=${step.right??'null'}`, 'info');
+      break;
+    case 'lca':
+      setNodeColor(step.val, 'lca');
+      highlightCode([{idx:5,cls:'hl-both'},{idx:6,cls:'hl-both'}]);
+      addLog(`🎯 LCA 找到！节点 ${step.val}（p,q 分别在两侧）`, 'lca');
+      stackTrace.pop();
+      renderStack2(stackTrace);
+      document.getElementById('result-val').textContent = step.val;
+      document.getElementById('result-badge').classList.add('show');
+      break;
+    case 'propagate':
+      if (step.ret !== null) setNodeColor(step.val, 'found');
+      highlightCode([{idx:7,cls:'hl-return'}]);
+      addLog(`← 节点 ${step.val} 向上返回 ${step.ret ?? 'null'}`, step.ret !== null ? 'found' : 'base');
+      stackTrace.pop();
+      renderStack2(stackTrace);
+      break;
+  }
+}
+
+function renderStack2(trace) {
+  const list = document.getElementById('stack-list');
+  list.innerHTML = '';
+  [...trace].reverse().forEach((v, i) => {
+    const item = document.createElement('div');
+    item.className = 'stack-item' + (i === 0 ? ' active' : '');
+    const dot = document.createElement('div');
+    dot.className = 'dot';
+    dot.style.background = i === 0 ? '#58a6ff' : '#30363d';
+    const txt = document.createElement('span');
+    txt.textContent = `lca(${v === null ? 'null' : v}, ${p_val}, ${q_val})`;
+    item.appendChild(dot); item.appendChild(txt);
+    list.appendChild(item);
+  });
+}
+
+// ─── Controls ─────────────────────────────────────────────────────────
+document.getElementById('btn-start').addEventListener('click', () => {
+  stopAuto();
+  reset();
+  p_val = parseInt(document.getElementById('sel-p').value);
+  q_val = parseInt(document.getElementById('sel-q').value);
+  if (p_val === q_val) { alert('请选择不同的节点'); return; }
+
+  // mark targets
+  setNodeColor(p_val, 'target');
+  setNodeColor(q_val, 'target');
+
+  steps = buildSteps(treeData, p_val, q_val);
+  stepIdx = 0;
+  document.getElementById('btn-next').disabled = false;
+  document.getElementById('btn-auto').disabled = false;
+  addLog(`开始搜索 p=${p_val}, q=${q_val}`, 'info');
+  updateProgress();
+});
+
+document.getElementById('btn-next').addEventListener('click', nextStep);
+document.getElementById('btn-reset').addEventListener('click', () => { stopAuto(); reset(); });
+document.getElementById('btn-auto').addEventListener('click', () => {
+  if (autoTimer) { stopAuto(); return; }
+  document.getElementById('btn-auto').textContent = '⏸ 暂停';
+  autoTimer = setInterval(() => {
+    if (stepIdx >= steps.length) { stopAuto(); return; }
+    nextStep();
+  }, 800);
+});
+
+function nextStep() {
+  if (stepIdx >= steps.length) return;
+  applyStep(steps[stepIdx]);
+  stepIdx++;
+  updateProgress();
+  if (stepIdx >= steps.length) {
+    document.getElementById('btn-next').disabled = true;
+    stopAuto();
+  }
+}
+
+function stopAuto() {
+  if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+  document.getElementById('btn-auto').textContent = '自动播放';
+  document.getElementById('btn-auto').disabled = stepIdx >= steps.length;
+}
+
+function updateProgress() {
+  const pct = steps.length ? (stepIdx / steps.length * 100) : 0;
+  document.getElementById('progress').style.width = pct + '%';
+}
+
+function reset() {
+  steps = []; stepIdx = 0; stackTrace = [];
+  resetAllColors();
+  document.getElementById('stack-list').innerHTML = '';
+  document.getElementById('log-list').innerHTML = '';
+  document.getElementById('result-badge').classList.remove('show');
+  document.getElementById('btn-next').disabled = true;
+  document.getElementById('btn-auto').disabled = true;
+  document.getElementById('btn-auto').textContent = '自动播放';
+  document.getElementById('progress').style.width = '0%';
+  for (let i = 0; i <= 7; i++) document.getElementById(`cl-${i}`).className = 'code-line';
+}
+</script>
+</body>
+</html>

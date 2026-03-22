@@ -1,8 +1,6 @@
-package 有效的括号;
-
 import java.util.Stack;
 
-class Solution {
+class ValidParentheses {
 
     public boolean isValid(String s) {
 
@@ -41,7 +39,7 @@ class Solution {
     }
 
     public static void main(String[] args) {
-        Solution sol = new Solution();
+        ValidParentheses sol = new ValidParentheses();
 
         // 示例1：() → true（最简单的匹配）
         System.out.println("示例1: " + sol.isValid("()"));       // true

@@ -1,5 +1,4 @@
-package 最长公共子序列;
-class Solution {
+class LongestCommonSubsequence {
     public int longestCommonSubsequence(String text1, String text2) {
         int m = text1.length();
         int n = text2.length();
@@ -27,7 +26,7 @@ class Solution {
     }
 
     public static void main(String[] args) {
-        Solution sol = new Solution();
+        LongestCommonSubsequence sol = new LongestCommonSubsequence();
 
         // 示例1：text1="abcde", text2="ace"  →  3（公共子序列 "ace"）
         System.out.println("示例1: " + sol.longestCommonSubsequence("abcde", "ace"));

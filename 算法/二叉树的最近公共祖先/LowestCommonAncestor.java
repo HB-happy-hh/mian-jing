@@ -17,7 +17,7 @@ class TreeNode {
      * 对每个节点，先递归查询左右子树是否包含 p 或 q，
      * 再根据返回结果判断当前节点是否为 LCA。
      */
-    public TreeNode lowestCommonAncestor(TreeNode root, TreeNode p, TreeNode q) {
+    public static TreeNode lowestCommonAncestor(TreeNode root, TreeNode p, TreeNode q) {
 
         // 当前节点为空：此路径上没有 p 或 q
         if (root == null) return null;
@@ -32,8 +32,14 @@ class TreeNode {
         // left 和 right 都不为空 → p、q 分列两侧 → 当前节点就是 LCA
         if (left != null && right != null) return root;
 
-        // 只有一侧不为空，则 LCA 在那一侧；两侧都为空则返回 null
-        return left != null ? left : right;
+        // 只有左边找到了，LCA 在左子树
+        if (left != null) return left;
+
+        // 只有右边找到了，LCA 在右子树
+        if (right != null) return right;
+
+        // 两边都没找到
+        return null;
     }
 
     public static void main(String[] args) {
@@ -59,15 +65,15 @@ class TreeNode {
         n1.left = n0; n1.right = n8;
         n2.left = n7; n2.right = n4;
 
-        LowestCommonAncestor sol = new LowestCommonAncestor();
+
 
         // 示例1：p=5, q=1 → LCA=3（分列根节点两侧）
-        System.out.println("示例1: " + sol.lowestCommonAncestor(n3, n5, n1).val); // 3
+        System.out.println("示例1: " + lowestCommonAncestor(n3, n5, n1).val); // 3
 
         // 示例2：p=5, q=4 → LCA=5（p 本身就是 q 的祖先）
-        System.out.println("示例2: " + sol.lowestCommonAncestor(n3, n5, n4).val); // 5
+        System.out.println("示例2: " + lowestCommonAncestor(n3, n5, n4).val); // 5
 
         // 示例3：p=6, q=4 → LCA=5（都在左子树，汇聚于节点5）
-        System.out.println("示例3: " + sol.lowestCommonAncestor(n3, n6, n4).val); // 5
+        System.out.println("示例3: " + lowestCommonAncestor(n3, n6, n4).val); // 5
     }
 }

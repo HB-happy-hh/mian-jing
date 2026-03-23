@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>二叉树的最近公共祖先 · 递归图解</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#1a1625;--surface:#282438;--surface2:#322d45;--border:#3d3553;
+  --text:#ede8f5;--muted:#7e72a3;
+  --purple:#bd93f9;--green:#50fa7b;--cyan:#8be9fd;--orange:#ffb86c;
+  --yellow:#f1fa8c;--gray:#6272a4;
+}
+body{font-family:'Noto Serif SC',Georgia,serif;background:var(--bg);color:var(--text);min-height:100vh}
+.wrap{max-width:1180px;margin:0 auto;padding:18px 22px}
+header{text-align:center;margin-bottom:16px}
+header h1{font-size:25px;font-weight:700;letter-spacing:2px;background:linear-gradient(135deg,var(--purple),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+header .sub{color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:3px;margin-top:3px}
+
+.build{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin-bottom:14px;font-family:system-ui,sans-serif;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.build label{color:var(--muted);font-size:13px;white-space:nowrap}
+#inp{flex:1;min-width:200px;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:13px;outline:none}
+#inp:focus{border-color:var(--purple)}
+.pre{background:var(--surface2);color:var(--muted);border:1px solid var(--border);padding:4px 10px;border-radius:5px;font-size:12px;cursor:pointer;font-family:system-ui,sans-serif;transition:all .15s}
+.pre:hover{color:var(--text);border-color:var(--purple)}
+
+.main{display:flex;gap:18px;margin-bottom:14px}
+.tree-box{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:10px 6px 6px;position:relative;min-height:300px;overflow-x:auto}
+.tree-box svg{display:block;margin:0 auto;min-width:100%;height:auto}
+.hint{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:var(--surface2);color:var(--muted);padding:4px 16px;border-radius:18px;font-size:12px;font-family:system-ui,sans-serif;pointer-events:none;transition:opacity .4s;white-space:nowrap;z-index:2}
+.legend{display:flex;gap:12px;justify-content:center;margin-top:4px;font-size:11px;font-family:system-ui,sans-serif;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:3px;vertical-align:-1px}
+
+.info{width:330px;display:flex;flex-direction:column;gap:12px;font-family:system-ui,-apple-system,sans-serif}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:12px 14px}
+.panel h3{font-size:11px;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:2px;margin-bottom:8px;font-family:'JetBrains Mono',monospace}
+.code-box{font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.75;overflow-x:auto}
+.cl{padding:1px 5px;border-radius:3px;border-left:3px solid transparent;transition:background .25s;white-space:pre}
+.cl.hi{background:rgba(189,147,249,.18);border-left-color:var(--purple)}
+.cl .kw{color:var(--purple)}.cl .fn{color:var(--green)}.cl .cm{color:var(--gray);font-style:italic}
+.explain{font-size:14px;line-height:1.8;min-height:48px;color:var(--text)}
+.explain .hl{color:var(--orange);font-weight:700}
+.stack-list{font-family:'JetBrains Mono',monospace;font-size:11px;min-height:22px}
+.si{padding:3px 7px;margin:2px 0;background:var(--surface2);border-radius:4px;border-left:3px solid var(--purple);color:var(--cyan);transition:all .2s}
+
+.controls{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:10px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;font-family:system-ui,sans-serif}
+.sel{display:flex;gap:16px;font-size:15px;font-weight:600}
+.sel .pv{color:var(--green)}.sel .qv{color:var(--cyan)}
+.btns{display:flex;gap:5px}
+button{background:var(--surface2);color:var(--text);border:1px solid var(--border);padding:6px 13px;border-radius:6px;font-size:13px;cursor:pointer;transition:all .15s;font-family:inherit}
+button:hover:not(:disabled){background:#4a4466;border-color:var(--purple)}
+button:disabled{opacity:.35;cursor:not-allowed}
+button.pri{background:var(--purple);border-color:var(--purple);color:#1a1625;font-weight:700}
+button.pri:hover:not(:disabled){background:#cda8ff}
+.cnt{color:var(--muted);font-size:13px;min-width:65px;text-align:right;font-family:'JetBrains Mono',monospace}
+
+.edge{stroke:var(--gray);stroke-width:2;opacity:.4}
+.nc{fill:#3d3553;stroke:var(--gray);stroke-width:2.5;cursor:pointer;transition:all .3s}
+.nc:hover{stroke:var(--text);stroke-width:3}
+.nc.visiting{fill:var(--purple);stroke:#cdb4ff;filter:drop-shadow(0 0 8px rgba(189,147,249,.6))}
+.nc.found-p{fill:var(--green);stroke:#7bffaa;filter:drop-shadow(0 0 8px rgba(80,250,123,.55))}
+.nc.found-q{fill:var(--cyan);stroke:#b0f0ff;filter:drop-shadow(0 0 8px rgba(139,233,253,.55))}
+.nc.lca{fill:var(--orange);stroke:#ffd4a0;filter:drop-shadow(0 0 14px rgba(255,184,108,.8))}
+.nc.done-null{fill:#2d2840;stroke:#3d3553;opacity:.5}
+.nc.pass{fill:#3d3553;stroke:var(--green);stroke-width:2.5;stroke-dasharray:5 3}
+.nc.sel-p{stroke:var(--green);stroke-width:3;stroke-dasharray:6 3}
+.nc.sel-q{stroke:var(--cyan);stroke-width:3;stroke-dasharray:6 3}
+.nt{fill:#f0ecf8;font-family:'JetBrains Mono',monospace;font-weight:600;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.nl{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;text-anchor:middle;pointer-events:none}
+.el{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>二叉树的最近公共祖先</h1>
+    <p class="sub">LOWEST COMMON ANCESTOR &middot; 后序递归图解</p>
+  </header>
+
+  <div class="build">
+    <label>层序数组：</label>
+    <input id="inp" value="3,5,1,6,2,0,8,n,n,7,4" placeholder="例: 3,5,1,6,2,n,8 (n 表示空)">
+    <button class="pri" id="bBuild">构建</button>
+    <button class="pre" data-v="3,5,1,6,2,0,8,n,n,7,4">默认</button>
+    <button class="pre" data-v="1,2,3">3 节点</button>
+    <button class="pre" data-v="1,2,3,4,5,6,7">满二叉树</button>
+    <button class="pre" data-v="1,2,3,4,n,n,5,6,n,n,7">不平衡</button>
+    <button class="pre" data-v="1,n,2,n,3,n,4">右链</button>
+  </div>
+
+  <div class="main">
+    <div class="tree-box">
+      <div class="hint" id="hint">点击树节点选择 p 和 q，然后开始演示</div>
+      <svg id="svg"></svg>
+      <div class="legend">
+        <span><i style="background:var(--purple)"></i>访问中</span>
+        <span><i style="background:var(--green)"></i>p</span>
+        <span><i style="background:var(--cyan)"></i>q</span>
+        <span><i style="background:var(--orange)"></i>LCA</span>
+        <span><i style="background:#3d3553;border:1px solid var(--gray)"></i>null</span>
+      </div>
+    </div>
+    <div class="info">
+      <div class="panel"><h3>算法代码</h3><div class="code-box" id="code"></div></div>
+      <div class="panel"><h3>当前步骤</h3><p class="explain" id="explain">选择 p、q 后点击「开始演示」</p></div>
+      <div class="panel"><h3>递归调用栈</h3><div class="stack-list" id="stack"><span style="color:var(--muted)">（尚未开始）</span></div></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="sel">
+      <span>p = <span class="pv" id="pv">?</span></span>
+      <span>q = <span class="qv" id="qv">?</span></span>
+    </div>
+    <div class="btns">
+      <button id="bPrev" disabled>&laquo; 上一步</button>
+      <button id="bStart" class="pri" disabled>开始演示</button>
+      <button id="bNext" disabled>下一步 &raquo;</button>
+      <button id="bAuto" disabled>自动播放</button>
+      <button id="bReset">重置</button>
+    </div>
+    <div class="cnt" id="cnt"></div>
+  </div>
+</div>
+
+<script>
+/* ── globals ── */
+let tree, ND={}, ED=[], R=26, pSel=null, qSel=null, mode='select';
+let steps=[], cur=0, timer=null, nid=0;
+const svg=document.getElementById('svg');
+
+/* ── parse & build ── */
+function parse(str){
+  str=str.trim().replace(/^\[|\]$/g,'');
+  if(!str)return[];
+  return str.split(',').map(s=>{s=s.trim().toLowerCase();return(s===''||s==='null'||s==='n')?null:isNaN(+s)?null:+s;});
+}
+function mkTree(arr){
+  if(!arr.length||arr[0]===null)return null;
+  nid=0;
+  const root={val:arr[0],id:nid++,left:null,right:null};
+  const q=[root];let i=1;
+  while(i<arr.length&&q.length){
+    const nd=q.shift();
+    if(i<arr.length&&arr[i]!==null){nd.left={val:arr[i],id:nid++,left:null,right:null};q.push(nd.left);}i++;
+    if(i<arr.length&&arr[i]!==null){nd.right={val:arr[i],id:nid++,left:null,right:null};q.push(nd.right);}i++;
+  }
+  return root;
+}
+function collect(n,p){if(!n)return;ND[n.id]=n;if(p)ED.push([p.id,n.id]);collect(n.left,n);collect(n.right,n);}
+
+/* ── layout (in-order x, depth y, then center) ── */
+function layout(root){
+  let cnt=0,maxD=0;
+  (function c(n,d){if(!n)return;cnt++;if(d>maxD)maxD=d;c(n.left,d+1);c(n.right,d+1);})(root,0);
+  const xG=Math.max(52,Math.min(78,560/cnt));
+  const yG=Math.max(82,Math.min(112,400/(maxD+1)));
+  let idx=0;
+  (function io(n,d){if(!n)return;io(n.left,d+1);n.x=idx*xG;n.y=d*yG+48;idx++;io(n.right,d+1);})(root,0);
+  let mn=1e9,mx=0;
+  (function b(n){if(!n)return;if(n.x<mn)mn=n.x;if(n.x>mx)mx=n.x;b(n.left);b(n.right);})(root);
+  const tw=mx-mn,sw=Math.max(660,tw+110),off=(sw-tw)/2-mn;
+  (function sh(n){if(!n)return;n.x+=off;sh(n.left);sh(n.right);})(root);
+  R=cnt>15?20:cnt>10?23:26;
+  return{w:sw,h:maxD*yG+48+52};
+}
+
+/* ── SVG rendering ── */
+function buildSVG(w,h){
+  svg.setAttribute('viewBox','0 0 '+w+' '+h);
+  svg.setAttribute('width',w);
+  const fs=R<22?13:R<24?15:16;
+  let s='';
+  for(const[pi,ci]of ED){const p=ND[pi],c=ND[ci];s+=`<line class="edge" x1="${p.x}" y1="${p.y}" x2="${c.x}" y2="${c.y}"/>`;}
+  for(const[pi,ci]of ED){
+    const p=ND[pi],c=ND[ci],mx=(p.x+c.x)/2,my=(p.y+c.y)/2;
+    const ox=c.x<p.x?-22:c.x>p.x?22:-22;
+    s+=`<text class="el" id="el${pi}_${ci}" x="${mx+ox}" y="${my-3}" style="display:none"></text>`;
+  }
+  for(const id in ND){
+    const n=ND[id];
+    s+=`<g onclick="ck(${id})" style="cursor:pointer">`;
+    s+=`<circle id="c${id}" class="nc" cx="${n.x}" cy="${n.y}" r="${R}"/>`;
+    s+=`<text class="nt" x="${n.x}" y="${n.y}" style="font-size:${fs}px">${n.val}</text>`;
+    s+=`<text class="nl" id="nl${id}" x="${n.x}" y="${n.y+R+14}" style="display:none"></text>`;
+    s+=`</g>`;
+  }
+  svg.innerHTML=s;
+}
+
+/* ── code panel ── */
+const CL=[
+  '<span class="kw">TreeNode</span> <span class="fn">LCA</span>(root, p, q) {',
+  '  <span class="kw">if</span> (root == <span class="kw">null</span>) <span class="kw">return null</span>;',
+  '  <span class="kw">if</span> (root == p || root == q) <span class="kw">return</span> root;',
+  '  left  = <span class="fn">LCA</span>(root.left,  p, q);',
+  '  right = <span class="fn">LCA</span>(root.right, p, q);',
+  '  <span class="kw">if</span> (left != <span class="kw">null</span> && right != <span class="kw">null</span>)',
+  '      <span class="kw">return</span> root; <span class="cm">// LCA!</span>',
+  '  <span class="kw">return</span> left != <span class="kw">null</span> ? left : right;',
+  '}'
+];
+function renderCode(hl){
+  document.getElementById('code').innerHTML=CL.map((c,i)=>
+    `<div class="cl${i===hl||(hl===56&&(i===5||i===6))?' hi':''}">${c}</div>`
+  ).join('');
+}
+renderCode(-1);
+
+/* ── node selection ── */
+function ck(id){
+  if(mode!=='select')return;
+  if(pSel===id){pSel=null;}
+  else if(qSel===id){qSel=null;}
+  else if(pSel===null){pSel=id;}
+  else if(qSel===null&&id!==pSel){qSel=id;}
+  else return;
+  document.getElementById('pv').textContent=pSel!==null?ND[pSel].val:'?';
+  document.getElementById('qv').textContent=qSel!==null?ND[qSel].val:'?';
+  for(const k in ND){
+    const ki=+k;
+    document.getElementById('c'+k).setAttribute('class','nc'+(ki===pSel?' sel-p':'')+(ki===qSel?' sel-q':''));
+  }
+  document.getElementById('bStart').disabled=!(pSel!==null&&qSel!==null);
+}
+
+/* ── step generation ── */
+function genSteps(root,pId,qId){
+  const pV=ND[pId].val, qV=ND[qId].val;
+  const st=[], col={}, lbl={}, rl={}, sk=[];
+  function snap(cl,t){st.push({col:{...col},lbl:{...lbl},rl:{...rl},sk:[...sk],cl,t});}
+
+  function solve(nd,par){
+    if(!nd)return null;
+    col[nd.id]='visiting'; sk.push('LCA('+nd.val+')');
+
+    if(nd.id===pId){
+      col[nd.id]='found-p';lbl[nd.id]='p';
+      if(par!==null)rl[par+'_'+nd.id]=''+nd.val;
+      snap(2,'进入节点 '+nd.val+' —— 就是 p，找到目标！直接返回节点 '+nd.val);
+      sk.pop();return nd;
+    }
+    if(nd.id===qId){
+      col[nd.id]='found-q';lbl[nd.id]='q';
+      if(par!==null)rl[par+'_'+nd.id]=''+nd.val;
+      snap(2,'进入节点 '+nd.val+' —— 就是 q，找到目标！直接返回节点 '+nd.val);
+      sk.pop();return nd;
+    }
+    if(!nd.left&&!nd.right){
+      col[nd.id]='done-null';lbl[nd.id]='null';
+      if(par!==null)rl[par+'_'+nd.id]='null';
+      snap(7,'进入节点 '+nd.val+' —— 叶子节点，不是目标，返回 null');
+      sk.pop();return null;
+    }
+
+    snap(3,'进入节点 '+nd.val+'：不是 p('+pV+') 也不是 q('+qV+')，'+
+      (nd.left?'先递归搜索左子树':'无左子树（left = null），直接搜索右子树'));
+
+    const lr=solve(nd.left,nd.id);
+    const lv=lr?lr.val:null;
+    col[nd.id]='visiting';
+
+    snap(4,'回到节点 '+nd.val+'：left = '+(lv!==null?'节点 '+lv:'null')+'。'+
+      (nd.right?'继续搜索右子树':'无右子树（right = null）'));
+
+    const rr=solve(nd.right,nd.id);
+    const rv=rr?rr.val:null;
+    col[nd.id]='visiting';
+
+    if(lr&&rr){
+      col[nd.id]='lca';lbl[nd.id]='LCA';
+      if(par!==null)rl[par+'_'+nd.id]=''+nd.val;
+      snap(56,'节点 '+nd.val+'：left = '+lv+'，right = '+rv+' —— p 和 q 分列两侧，节点 '+nd.val+' 就是最近公共祖先！');
+      sk.pop();return nd;
+    }
+    const res=lr||rr,rv2=res?res.val:null;
+    if(res){
+      col[nd.id]='pass';lbl[nd.id]=''+rv2;
+      if(par!==null)rl[par+'_'+nd.id]=''+rv2;
+      snap(7,'节点 '+nd.val+'：left = '+(lv!==null?lv:'null')+'，right = '+(rv!==null?rv:'null')+' —— 只有一侧找到，向上传递 '+rv2);
+    }else{
+      col[nd.id]='done-null';lbl[nd.id]='null';
+      if(par!==null)rl[par+'_'+nd.id]='null';
+      snap(7,'节点 '+nd.val+'：left = null，right = null —— 两侧都没找到，返回 null');
+    }
+    sk.pop();return res;
+  }
+
+  snap(-1,'开始查找 p = '+pV+' 和 q = '+qV+' 的最近公共祖先，从根节点出发');
+  const ans=solve(root,null);
+  snap(-1,'查找完毕！p = '+pV+' 和 q = '+qV+' 的最近公共祖先是节点 '+(ans?ans.val:'?'));
+  return st;
+}
+
+/* ── animation ── */
+function apply(idx){
+  if(idx<0||idx>=steps.length)return;
+  cur=idx;const s=steps[idx];
+  for(const id in ND){
+    const cc=s.col[id]||'';
+    document.getElementById('c'+id).setAttribute('class','nc'+(cc?' '+cc:''));
+    const nl=document.getElementById('nl'+id);
+    if(s.lbl[id]){
+      nl.textContent=s.lbl[id];nl.style.display='';
+      nl.setAttribute('fill',cc==='found-p'?'var(--green)':cc==='found-q'?'var(--cyan)':cc==='lca'?'var(--orange)':cc==='pass'?'var(--green)':'var(--muted)');
+    }else nl.style.display='none';
+  }
+  for(const[pi,ci]of ED){
+    const el=document.getElementById('el'+pi+'_'+ci),k=pi+'_'+ci;
+    if(s.rl[k]){el.textContent=s.rl[k];el.style.display='';el.setAttribute('fill',s.rl[k]==='null'?'var(--gray)':'var(--yellow)');}
+    else el.style.display='none';
+  }
+  renderCode(s.cl);
+  document.getElementById('explain').innerHTML=s.t.replace(/最近公共祖先/g,'<span class="hl">最近公共祖先</span>');
+  const se=document.getElementById('stack');
+  se.innerHTML=s.sk.length?s.sk.map((t,i)=>'<div class="si" style="margin-left:'+i*14+'px">'+t+'</div>').join(''):'<span style="color:var(--muted)">(空)</span>';
+  document.getElementById('bPrev').disabled=idx<=0;
+  document.getElementById('bNext').disabled=idx>=steps.length-1;
+  document.getElementById('cnt').textContent=(idx+1)+' / '+steps.length;
+}
+
+/* ── build / reset ── */
+function resetUI(){
+  if(timer){clearInterval(timer);timer=null;}
+  mode='select';pSel=null;qSel=null;steps=[];cur=0;
+  document.getElementById('pv').textContent='?';
+  document.getElementById('qv').textContent='?';
+  document.getElementById('hint').style.opacity='1';
+  document.getElementById('explain').textContent='选择 p、q 后点击「开始演示」';
+  document.getElementById('stack').innerHTML='<span style="color:var(--muted)">（尚未开始）</span>';
+  document.getElementById('cnt').textContent='';
+  document.getElementById('bStart').disabled=true;
+  document.getElementById('bPrev').disabled=true;
+  document.getElementById('bNext').disabled=true;
+  document.getElementById('bAuto').disabled=true;
+  document.getElementById('bAuto').textContent='自动播放';
+  renderCode(-1);
+}
+function doBuild(){
+  resetUI();
+  const arr=parse(document.getElementById('inp').value);
+  if(!arr.length||arr[0]===null){alert('请输入有效的树结构，例如：3,5,1,6,2,n,8');return;}
+  tree=mkTree(arr);ND={};ED=[];collect(tree,null);
+  if(Object.keys(ND).length<2){alert('至少需要 2 个节点才能查找 LCA');return;}
+  const d=layout(tree);
+  buildSVG(d.w,d.h);
+}
+
+/* ── event bindings ── */
+document.getElementById('bBuild').onclick=doBuild;
+document.querySelectorAll('.pre').forEach(b=>b.onclick=function(){document.getElementById('inp').value=this.dataset.v;doBuild();});
+document.getElementById('bStart').onclick=function(){
+  if(pSel===null||qSel===null)return;
+  mode='playing';document.getElementById('hint').style.opacity='0';
+  steps=genSteps(tree,pSel,qSel);apply(0);
+  this.disabled=true;document.getElementById('bNext').disabled=false;document.getElementById('bAuto').disabled=false;
+};
+document.getElementById('bPrev').onclick=function(){if(cur>0)apply(cur-1);};
+document.getElementById('bNext').onclick=function(){if(cur<steps.length-1)apply(cur+1);};
+document.getElementById('bAuto').onclick=function(){
+  if(timer){clearInterval(timer);timer=null;this.textContent='自动播放';return;}
+  this.textContent='暂停';
+  timer=setInterval(()=>{if(cur<steps.length-1)apply(cur+1);else{clearInterval(timer);timer=null;document.getElementById('bAuto').textContent='自动播放';}},1400);
+};
+document.getElementById('bReset').onclick=function(){resetUI();doBuild();};
+document.addEventListener('keydown',function(e){
+  if(mode!=='playing')return;
+  if(e.key==='ArrowLeft'){e.preventDefault();if(cur>0)apply(cur-1);}
+  if(e.key==='ArrowRight'){e.preventDefault();if(cur<steps.length-1)apply(cur+1);}
+  if(e.key===' '){e.preventDefault();document.getElementById('bAuto').click();}
+});
+document.getElementById('inp').addEventListener('keydown',function(e){if(e.key==='Enter')doBuild();});
+
+/* ── init ── */
+doBuild();
+</script>
+</body>
+</html>

@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>118. 杨辉三角 — 图解</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Serif+SC:wght@400;700;900&display=swap');
+
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --accent: #f7c948;
+      --accent2: #58a6ff;
+      --accent3: #3fb950;
+      --danger: #f85149;
+      --muted: #8b949e;
+      --text: #e6edf3;
+      --code-bg: #1f2937;
+      --purple: #bc8cff;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Noto Serif SC', serif;
+      min-height: 100vh;
+      padding: 48px 24px 80px;
+    }
+    .page { max-width: 960px; margin: 0 auto; }
+
+    header {
+      border-left: 5px solid var(--accent);
+      padding-left: 20px;
+      margin-bottom: 48px;
+    }
+    header .tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--accent);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    header h1 { font-size: 36px; font-weight: 900; }
+    header p  { color: var(--muted); margin-top: 10px; font-size: 15px; line-height: 1.7; }
+
+    .section-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+
+    /* ── 规律卡片 ── */
+    .rule-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+    .rule-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 24px;
+    }
+    .rule-card h3 { font-size: 14px; margin-bottom: 8px; }
+    .rule-card p  { font-size: 13px; color: var(--muted); line-height: 1.7; }
+    .rule-card .formula {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 15px;
+      color: var(--accent2);
+      margin-top: 10px;
+      padding: 8px 12px;
+      background: var(--code-bg);
+      border-radius: 6px;
+      display: inline-block;
+    }
+
+    /* ── 控制栏 ── */
+    .controls {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 28px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .btn {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      padding: 10px 22px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-weight: 700;
+      transition: all 0.15s;
+    }
+    .btn-primary  { background: var(--accent); color: #0d1117; }
+    .btn-primary:hover  { background: #ffd96b; }
+    .btn-primary:disabled  { background: var(--border); color: var(--muted); cursor: not-allowed; }
+    .btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+    .btn-secondary:hover { border-color: var(--text); color: var(--text); }
+    .btn-secondary:disabled { border-color: var(--border); color: var(--border); cursor: not-allowed; }
+    .step-counter { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted); margin-left:auto; }
+
+    /* ── 主布局 ── */
+    .main-layout {
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      gap: 24px;
+      margin-bottom: 40px;
+      align-items: start;
+    }
+
+    /* ── 三角可视化 ── */
+    .triangle-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px 24px;
+      min-height: 340px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    .tri-row {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+    }
+    .cell {
+      width: 52px;
+      height: 52px;
+      border-radius: 10px;
+      border: 2px solid var(--border);
+      background: var(--code-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--muted);
+      transition: all 0.25s;
+      position: relative;
+    }
+    .cell.empty {
+      background: transparent;
+      border: 2px dashed #2a3040;
+      color: transparent;
+    }
+    .cell.filled {
+      color: var(--text);
+      border-color: var(--border);
+    }
+    .cell.edge {
+      background: var(--surface);
+      border-color: var(--accent3);
+      color: var(--accent3);
+    }
+    .cell.parent-left {
+      background: rgba(88, 166, 255, 0.15);
+      border-color: var(--accent2);
+      color: var(--accent2);
+      transform: scale(1.08);
+    }
+    .cell.parent-right {
+      background: rgba(188, 140, 255, 0.15);
+      border-color: var(--purple);
+      color: var(--purple);
+      transform: scale(1.08);
+    }
+    .cell.computing {
+      background: rgba(247, 201, 72, 0.18);
+      border-color: var(--accent);
+      color: var(--accent);
+      transform: scale(1.12);
+      box-shadow: 0 0 16px rgba(247,201,72,0.3);
+    }
+    .cell.done-edge {
+      background: rgba(63, 185, 80, 0.12);
+      border-color: var(--accent3);
+      color: var(--accent3);
+    }
+    .cell.done-mid {
+      background: rgba(247, 201, 72, 0.1);
+      border-color: #8b7a30;
+      color: var(--accent);
+    }
+
+    /* ── 右侧状态 ── */
+    .state-panel { display: flex; flex-direction: column; gap: 16px; }
+    .state-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px;
+    }
+    .state-card .label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .log-box {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 1.9;
+      min-height: 70px;
+    }
+    .log-box .hl-blue   { color: var(--accent2); }
+    .log-box .hl-purple { color: var(--purple); }
+    .log-box .hl-yellow { color: var(--accent); font-weight: 700; }
+    .log-box .hl-green  { color: var(--accent3); }
+    .log-box .hl-muted  { color: var(--muted); }
+
+    /* 加法演示 */
+    .addition-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      min-height: 48px;
+    }
+    .add-num {
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 20px;
+      font-weight: 700;
+    }
+    .add-num.left  { background: rgba(88,166,255,0.15); color: var(--accent2); border: 1px solid var(--accent2); }
+    .add-num.right { background: rgba(188,140,255,0.15); color: var(--purple);  border: 1px solid var(--purple); }
+    .add-num.result{ background: rgba(247,201,72,0.15);  color: var(--accent);  border: 1px solid var(--accent); }
+    .add-op { color: var(--muted); font-size: 18px; font-family: 'JetBrains Mono', monospace; }
+    .add-placeholder { color: var(--border); font-size: 13px; font-family: 'JetBrains Mono', monospace; }
+
+    /* 结果列表 */
+    .result-rows { display: flex; flex-direction: column; gap: 4px; }
+    .result-row-chip {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--accent3);
+      padding: 3px 10px;
+      background: var(--code-bg);
+      border: 1px solid var(--accent3);
+      border-radius: 6px;
+      animation: popIn 0.25s ease;
+    }
+    @keyframes popIn {
+      from { transform: scale(0.8); opacity: 0; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+
+    /* ── 代码 ── */
+    .code-block {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 2;
+      overflow-x: auto;
+      margin-bottom: 40px;
+    }
+    .code-line { padding: 0 8px; border-radius: 4px; transition: background 0.2s; white-space: pre; }
+    .code-line.hl { background: rgba(247,201,72,0.15); border-left: 3px solid var(--accent); padding-left: 5px; }
+    .kw  { color: #ff7b72; }
+    .fn  { color: #d2a8ff; }
+    .cm  { color: #8b949e; font-style: italic; }
+    .num-lit { color: #79c0ff; }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="tag">Dynamic Programming · LeetCode 118</div>
+    <h1>杨辉三角</h1>
+    <p>每个数等于它上方左右两数之和；首尾永远是 1。</p>
+  </header>
+
+  <p class="section-title">核心规律</p>
+  <div class="rule-grid" style="margin-bottom:40px">
+    <div class="rule-card">
+      <h3>首尾规律</h3>
+      <p>每行第一个和最后一个元素固定为 1，不需要计算。</p>
+      <div class="formula">j == 0 || j == i  →  1</div>
+    </div>
+    <div class="rule-card">
+      <h3>中间规律</h3>
+      <p>中间的每个数 = 上一行同位置 + 上一行前一位置。</p>
+      <div class="formula">prev[j-1] + prev[j]</div>
+    </div>
+  </div>
+
+  <p class="section-title">动画演示 · numRows = 5</p>
+  <div class="controls">
+    <button class="btn btn-secondary" id="btn-prev" disabled>◀ 上一步</button>
+    <button class="btn btn-primary"   id="btn-next">下一步 ▶</button>
+    <button class="btn btn-secondary" id="btn-reset">重置</button>
+    <span class="step-counter" id="step-counter">步骤 0 / 0</span>
+  </div>
+
+  <div class="main-layout">
+    <!-- 三角 -->
+    <div class="triangle-panel" id="triangle-panel"></div>
+
+    <!-- 状态 -->
+    <div class="state-panel">
+      <div class="state-card">
+        <div class="label">当前操作</div>
+        <div class="log-box" id="log-box">点击「下一步」开始演示…</div>
+      </div>
+      <div class="state-card">
+        <div class="label">加法计算</div>
+        <div class="addition-box" id="addition-box">
+          <span class="add-placeholder">—</span>
+        </div>
+      </div>
+      <div class="state-card">
+        <div class="label">已完成行</div>
+        <div class="result-rows" id="result-rows">
+          <span style="color:var(--border);font-family:'JetBrains Mono',monospace;font-size:13px">暂无</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="section-title">Java 代码</p>
+  <div class="code-block">
+<div class="code-line" id="cl-0"><span class="kw">public</span> List&lt;List&lt;Integer&gt;&gt; <span class="fn">generate</span>(<span class="kw">int</span> numRows) {</div>
+<div class="code-line" id="cl-1">    List&lt;List&lt;Integer&gt;&gt; result = <span class="kw">new</span> ArrayList&lt;&gt;();</div>
+<div class="code-line" id="cl-2">    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num-lit">0</span>; i &lt; numRows; i++) {         <span class="cm">// 逐行构建</span></div>
+<div class="code-line" id="cl-3">        List&lt;Integer&gt; row = <span class="kw">new</span> ArrayList&lt;&gt;();</div>
+<div class="code-line" id="cl-4">        <span class="kw">for</span> (<span class="kw">int</span> j = <span class="num-lit">0</span>; j &lt;= i; j++) {           <span class="cm">// 逐列填数</span></div>
+<div class="code-line" id="cl-5">            <span class="kw">if</span> (j == <span class="num-lit">0</span> || j == i) {</div>
+<div class="code-line" id="cl-6">                row.add(<span class="num-lit">1</span>);                       <span class="cm">// 首尾填 1</span></div>
+<div class="code-line" id="cl-7">            } <span class="kw">else</span> {</div>
+<div class="code-line" id="cl-8">                List&lt;Integer&gt; prev = result.get(i - <span class="num-lit">1</span>);</div>
+<div class="code-line" id="cl-9">                row.add(prev.get(j-<span class="num-lit">1</span>) + prev.get(j)); <span class="cm">// 左上 + 右上</span></div>
+<div class="code-line" id="cl-10">            }</div>
+<div class="code-line" id="cl-11">        }</div>
+<div class="code-line" id="cl-12">        result.add(row);                           <span class="cm">// 完成一行，加入结果</span></div>
+<div class="code-line" id="cl-13">    }</div>
+<div class="code-line" id="cl-14">    <span class="kw">return</span> result;</div>
+<div class="code-line" id="cl-15">}</div>
+  </div>
+
+</div>
+
+<script>
+const NUM_ROWS = 5;
+
+// 预先算出完整三角
+const triangle = [];
+for (let i = 0; i < NUM_ROWS; i++) {
+  const row = [];
+  for (let j = 0; j <= i; j++) {
+    if (j === 0 || j === i) row.push(1);
+    else row.push(triangle[i-1][j-1] + triangle[i-1][j]);
+  }
+  triangle.push(row);
+}
+
+// 录制每一步
+// step: { row, col, type:'edge'|'mid'|'rowDone', msg, codeLine, addLeft, addRight, addResult }
+const steps = [];
+
+for (let i = 0; i < NUM_ROWS; i++) {
+  steps.push({
+    row: i, col: -1, type: 'rowStart',
+    msg: `<span class="hl-muted">开始构建第 ${i} 行（共 ${i+1} 个元素）</span>`,
+    codeLine: 2
+  });
+  for (let j = 0; j <= i; j++) {
+    if (j === 0 || j === i) {
+      steps.push({
+        row: i, col: j, type: 'edge',
+        msg: `<span class="hl-green">第 ${i} 行，第 ${j} 列</span><br>` +
+             `<span class="hl-muted">首尾位置，直接填</span> <span class="hl-green">1</span>`,
+        codeLine: 6
+      });
+    } else {
+      const pl = triangle[i-1][j-1];
+      const pr = triangle[i-1][j];
+      steps.push({
+        row: i, col: j, type: 'mid',
+        msg: `<span class="hl-yellow">第 ${i} 行，第 ${j} 列</span><br>` +
+             `<span class="hl-blue">prev[${j-1}]=${pl}</span> + <span class="hl-purple">prev[${j}]=${pr}</span>` +
+             ` = <span class="hl-yellow">${pl+pr}</span>`,
+        codeLine: 9,
+        addLeft: pl, addRight: pr, addResult: pl + pr
+      });
+    }
+  }
+  steps.push({
+    row: i, col: -2, type: 'rowDone',
+    msg: `<span class="hl-green">✓ 第 ${i} 行完成：[${triangle[i].join(', ')}]</span>`,
+    codeLine: 12
+  });
+}
+
+// ── 构建 DOM 三角 ──
+const panel = document.getElementById('triangle-panel');
+const cellEls = []; // cellEls[row][col]
+
+for (let i = 0; i < NUM_ROWS; i++) {
+  const rowDiv = document.createElement('div');
+  rowDiv.className = 'tri-row';
+  cellEls.push([]);
+  for (let j = 0; j <= i; j++) {
+    const cell = document.createElement('div');
+    cell.className = 'cell empty';
+    cell.id = `cell_${i}_${j}`;
+    cell.textContent = triangle[i][j];
+    rowDiv.appendChild(cell);
+    cellEls[i].push(cell);
+  }
+  panel.appendChild(rowDiv);
+}
+
+// ── 渲染状态 ──
+// cellState[i][j] = 'empty'|'computing'|'done-edge'|'done-mid'|'parent-left'|'parent-right'
+const cellState = triangle.map(row => row.map(() => 'empty'));
+const completedRows = [];
+let currentStep = -1;
+
+function applyAllStates() {
+  for (let i = 0; i < NUM_ROWS; i++) {
+    for (let j = 0; j <= i; j++) {
+      const el = cellEls[i][j];
+      const st = cellState[i][j];
+      el.className = 'cell ' + (st === 'empty' ? 'empty' : st);
+    }
+  }
+}
+
+function renderStep(idx) {
+  const s = steps[idx];
+
+  // 先清除所有 computing/parent 状态，恢复为对应的 done 状态
+  for (let i = 0; i < NUM_ROWS; i++) {
+    for (let j = 0; j <= i; j++) {
+      if (cellState[i][j] === 'computing' ||
+          cellState[i][j] === 'parent-left' ||
+          cellState[i][j] === 'parent-right') {
+        // 判断这个格子原本的最终状态
+        if (j === 0 || j === i) cellState[i][j] = 'done-edge';
+        else cellState[i][j] = 'done-mid';
+      }
+    }
+  }
+
+  if (s.type === 'edge') {
+    cellState[s.row][s.col] = 'computing';
+  } else if (s.type === 'mid') {
+    cellState[s.row][s.col] = 'computing';
+    cellState[s.row - 1][s.col - 1] = 'parent-left';
+    cellState[s.row - 1][s.col]     = 'parent-right';
+  } else if (s.type === 'rowDone') {
+    for (let j = 0; j <= s.row; j++) {
+      cellState[s.row][j] = (j === 0 || j === s.row) ? 'done-edge' : 'done-mid';
+    }
+    if (!completedRows.includes(s.row)) completedRows.push(s.row);
+  }
+
+  applyAllStates();
+
+  // log
+  document.getElementById('log-box').innerHTML = s.msg;
+
+  // addition
+  const addBox = document.getElementById('addition-box');
+  if (s.type === 'mid') {
+    addBox.innerHTML =
+      `<span class="add-num left">${s.addLeft}</span>` +
+      `<span class="add-op">+</span>` +
+      `<span class="add-num right">${s.addRight}</span>` +
+      `<span class="add-op">=</span>` +
+      `<span class="add-num result">${s.addResult}</span>`;
+  } else {
+    addBox.innerHTML = '<span class="add-placeholder">—</span>';
+  }
+
+  // results
+  const rd = document.getElementById('result-rows');
+  if (completedRows.length === 0) {
+    rd.innerHTML = '<span style="color:var(--border);font-family:\'JetBrains Mono\',monospace;font-size:13px">暂无</span>';
+  } else {
+    rd.innerHTML = completedRows
+      .map(r => `<div class="result-row-chip">[${triangle[r].join(', ')}]</div>`)
+      .join('');
+  }
+
+  // code highlight
+  document.querySelectorAll('.code-line').forEach(el => el.classList.remove('hl'));
+  if (s.codeLine !== undefined) {
+    const cl = document.getElementById(`cl-${s.codeLine}`);
+    if (cl) cl.classList.add('hl');
+  }
+}
+
+function doReset() {
+  currentStep = -1;
+  completedRows.length = 0;
+  for (let i = 0; i < NUM_ROWS; i++)
+    for (let j = 0; j <= i; j++)
+      cellState[i][j] = 'empty';
+  applyAllStates();
+  document.getElementById('log-box').innerHTML = '点击「下一步」开始演示…';
+  document.getElementById('addition-box').innerHTML = '<span class="add-placeholder">—</span>';
+  document.getElementById('result-rows').innerHTML =
+    '<span style="color:var(--border);font-family:\'JetBrains Mono\',monospace;font-size:13px">暂无</span>';
+  document.querySelectorAll('.code-line').forEach(el => el.classList.remove('hl'));
+  updateButtons();
+}
+
+function replayTo(target) {
+  // 重置所有状态，从头重放到目标
+  completedRows.length = 0;
+  for (let i = 0; i < NUM_ROWS; i++)
+    for (let j = 0; j <= i; j++)
+      cellState[i][j] = 'empty';
+
+  for (let idx = 0; idx <= target; idx++) {
+    const s = steps[idx];
+    // 清除临时状态
+    for (let i = 0; i < NUM_ROWS; i++)
+      for (let j = 0; j <= i; j++)
+        if (cellState[i][j] === 'computing' ||
+            cellState[i][j] === 'parent-left' ||
+            cellState[i][j] === 'parent-right') {
+          cellState[i][j] = (j === 0 || j === i) ? 'done-edge' : 'done-mid';
+        }
+
+    if (s.type === 'edge')    cellState[s.row][s.col] = 'computing';
+    else if (s.type === 'mid') {
+      cellState[s.row][s.col]         = 'computing';
+      cellState[s.row-1][s.col-1]     = 'parent-left';
+      cellState[s.row-1][s.col]       = 'parent-right';
+    } else if (s.type === 'rowDone') {
+      for (let j = 0; j <= s.row; j++)
+        cellState[s.row][j] = (j === 0 || j === s.row) ? 'done-edge' : 'done-mid';
+      if (!completedRows.includes(s.row)) completedRows.push(s.row);
+    }
+  }
+  currentStep = target;
+  renderStep(target);
+  updateButtons();
+}
+
+function updateButtons() {
+  document.getElementById('btn-prev').disabled = currentStep <= 0;
+  document.getElementById('btn-next').disabled = currentStep >= steps.length - 1;
+  const shown = currentStep < 0 ? 0 : currentStep + 1;
+  document.getElementById('step-counter').textContent = `步骤 ${shown} / ${steps.length}`;
+}
+
+document.getElementById('btn-next').addEventListener('click', () => {
+  if (currentStep < steps.length - 1) {
+    currentStep++;
+    renderStep(currentStep);
+    updateButtons();
+  }
+});
+document.getElementById('btn-prev').addEventListener('click', () => {
+  if (currentStep > 0) replayTo(currentStep - 1);
+  else doReset();
+});
+document.getElementById('btn-reset').addEventListener('click', doReset);
+
+updateButtons();
+</script>
+</body>
+</html>

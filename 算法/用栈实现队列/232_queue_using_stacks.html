@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>LeetCode 232 · 用栈实现队列</title>
+<link href="https://fonts.googleapis.com/css2?family=ZCOOL+XiaoWei&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0f1a;
+    --panel: #1a1a2e;
+    --border: #2d2d5e;
+    --red: #e94560;
+    --green: #4ecca3;
+    --gold: #f5a623;
+    --purple: #a78bfa;
+    --text: #e0e0f0;
+    --muted: #6060a0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    min-height: 100vh;
+    padding: 28px 20px;
+  }
+  h1 {
+    font-family: 'ZCOOL XiaoWei', serif;
+    text-align: center;
+    font-size: 2rem;
+    color: var(--green);
+    letter-spacing: 4px;
+    margin-bottom: 4px;
+    text-shadow: 0 0 24px rgba(78,204,163,0.5);
+  }
+  .sub { text-align: center; color: var(--muted); font-size: 0.75rem; letter-spacing: 3px; margin-bottom: 28px; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; max-width: 980px; margin: 0 auto; }
+  .full { grid-column: 1 / -1; }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 20px;
+  }
+  .card-title {
+    font-size: 0.72rem;
+    color: var(--gold);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+  }
+
+  /* ── Stack visualizer ── */
+  .demo-area {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 16px;
+    min-height: 230px;
+    margin-bottom: 16px;
+  }
+  .stack-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .stack-name { font-size: 0.68rem; color: var(--muted); letter-spacing: 1px; }
+  .stack-box {
+    display: flex; flex-direction: column-reverse;
+    align-items: center; justify-content: flex-start;
+    width: 96px; min-height: 180px;
+    border: 2px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 10px 10px;
+    padding: 4px; gap: 3px;
+    position: relative;
+  }
+  .stack-box.s1 { border-color: var(--red); }
+  .stack-box.s2 { border-color: var(--green); }
+  .top-hint { font-size: 0.6rem; color: var(--gold); letter-spacing: 1px; min-height: 16px; }
+
+  .cell {
+    width: 78px; height: 32px;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem; font-weight: 700;
+    transition: all 0.35s ease;
+  }
+  .c1 { background: rgba(233,69,96,0.2); border: 1.5px solid var(--red); color: var(--red); }
+  .c2 { background: rgba(78,204,163,0.18); border: 1.5px solid var(--green); color: var(--green); }
+  .cell.hi { transform: scale(1.1); box-shadow: 0 0 14px currentColor; }
+
+  .arrow-col {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding-bottom: 24px; gap: 4px; color: var(--purple);
+  }
+  .arrow-col .ico { font-size: 1.6rem; }
+  .arrow-col .lbl { font-size: 0.6rem; text-align: center; line-height: 1.5; max-width: 54px; }
+
+  /* controls */
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+  input[type=number] {
+    width: 68px; background: #0a0a18;
+    border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text); padding: 7px 10px;
+    font-family: inherit; font-size: 0.85rem; outline: none;
+  }
+  input[type=number]:focus { border-color: var(--green); }
+  .btn {
+    padding: 7px 14px; border-radius: 6px; border: none;
+    font-family: inherit; font-size: 0.76rem; cursor: pointer;
+    font-weight: 700; letter-spacing: 1px; transition: all 0.18s;
+  }
+  .btn:hover { filter: brightness(1.25); transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+  .b-push { background: var(--red); color: #fff; }
+  .b-pop  { background: var(--green); color: #0f0f1a; }
+  .b-peek { background: var(--gold); color: #0f0f1a; }
+  .b-empty{ background: var(--purple); color: #0f0f1a; }
+  .b-reset{ background: #2a2a4a; color: var(--text); }
+
+  .log {
+    background: #08080f; border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 12px;
+    font-size: 0.7rem; color: var(--muted);
+    min-height: 72px; max-height: 90px;
+    overflow-y: auto; line-height: 1.65;
+  }
+  .log span { display: block; }
+  .ok   { color: var(--green) !important; }
+  .warn { color: var(--gold) !important; }
+  .err  { color: var(--red) !important; }
+  .info { color: var(--purple) !important; }
+
+  /* ── Step-by-step ── */
+  .steps { list-style: none; counter-reset: s; display: flex; flex-direction: column; gap: 12px; }
+  .steps li {
+    counter-increment: s; display: flex; gap: 12px;
+    font-size: 0.76rem; line-height: 1.65; color: var(--text);
+  }
+  .steps li::before {
+    content: counter(s);
+    min-width: 22px; height: 22px; border-radius: 50%;
+    background: #1a1a3a; border: 1.5px solid var(--green);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.68rem; color: var(--green); font-weight: 700;
+    flex-shrink: 0; margin-top: 2px;
+  }
+  .tag {
+    display: inline-block; padding: 1px 7px; border-radius: 4px;
+    font-size: 0.67rem; font-weight: 700; margin-right: 4px;
+  }
+  .t-push { background: rgba(233,69,96,0.2); color: var(--red); border: 1px solid var(--red); }
+  .t-pop  { background: rgba(78,204,163,0.18); color: var(--green); border: 1px solid var(--green); }
+  .t-peek { background: rgba(245,166,35,0.2); color: var(--gold); border: 1px solid var(--gold); }
+  .t-empty{ background: rgba(167,139,250,0.2); color: var(--purple); border: 1px solid var(--purple); }
+
+  /* ── Code ── */
+  pre {
+    background: #08080f; border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px 18px;
+    font-size: 0.73rem; line-height: 1.75; overflow-x: auto;
+    color: #c0c0e0;
+  }
+  .kw  { color: #7dd3fc; }
+  .cls { color: #fde68a; }
+  .fn  { color: var(--green); }
+  .cmt { color: var(--muted); font-style: italic; }
+  .num { color: var(--gold); }
+  .str { color: var(--red); }
+  .ann { color: var(--purple); }
+
+  /* ── Complexity ── */
+  table { width: 100%; border-collapse: collapse; font-size: 0.74rem; }
+  th { background: #1a1a3a; color: var(--green); padding: 7px 12px; text-align: left; letter-spacing: 1px; }
+  td { padding: 7px 12px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.025); }
+  .amort { color: var(--green); font-weight: 700; }
+  .worst { color: var(--gold); }
+</style>
+</head>
+<body>
+
+<h1>232 · 用栈实现队列</h1>
+<div class="sub">双栈模拟队列 — 懒惰转移法 · O(1) 均摊</div>
+
+<div class="grid">
+
+  <!-- ── Interactive Demo ── -->
+  <div class="card">
+    <div class="card-title">▶ 交互演示</div>
+    <div class="demo-area">
+      <div class="stack-wrap">
+        <div class="top-hint" id="h1"></div>
+        <div class="stack-name">stack1（入队）</div>
+        <div class="stack-box s1" id="s1"></div>
+      </div>
+      <div class="arrow-col">
+        <div class="ico">⟹</div>
+        <div class="lbl">s2 为空<br>时倒入</div>
+      </div>
+      <div class="stack-wrap">
+        <div class="top-hint" id="h2"></div>
+        <div class="stack-name">stack2（出队）</div>
+        <div class="stack-box s2" id="s2"></div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <input type="number" id="val" value="1" min="0" max="99">
+      <button class="btn b-push" onclick="doPush()">push</button>
+      <button class="btn b-pop"  onclick="doPop()">pop</button>
+      <button class="btn b-peek" onclick="doPeek()">peek</button>
+      <button class="btn b-empty" onclick="doEmpty()">empty?</button>
+      <button class="btn b-reset" onclick="doReset()">reset</button>
+    </div>
+    <div class="log" id="log"><span class="ok">// 点击按钮，观察两栈的变化 ↑</span></div>
+  </div>
+
+  <!-- ── Algorithm Steps ── -->
+  <div class="card">
+    <div class="card-title">💡 核心思路</div>
+    <ul class="steps">
+      <li>
+        <span>
+          <span class="tag t-push">push(x)</span>
+          直接压入 <b>stack1</b>（入队栈），始终 O(1)
+        </span>
+      </li>
+      <li>
+        <span>
+          <span class="tag t-pop">pop()</span>
+          若 stack2 <b>非空</b>，直接弹出 stack2 栈顶；<br>
+          若 stack2 <b>为空</b>，先把 stack1 <b>全部</b>倒入 stack2，再弹出
+        </span>
+      </li>
+      <li>
+        <span>
+          <span class="tag t-peek">peek()</span>
+          逻辑同 pop，只看不取，返回 stack2 栈顶值
+        </span>
+      </li>
+      <li>
+        <span>
+          <span class="tag t-empty">empty()</span>
+          stack1 && stack2 <b>均为空</b>时返回 true
+        </span>
+      </li>
+      <li>
+        <span>
+          倒入时把 stack1 的<b>逆序</b>变成 stack2 的<b>正序</b>，
+          恰好满足 FIFO ✓ 每个元素最多被搬运一次 → 均摊 O(1)
+        </span>
+      </li>
+    </ul>
+  </div>
+
+  <!-- ── Java Code ── -->
+  <div class="card full">
+    <div class="card-title">&lt;/&gt; Java 实现</div>
+    <pre><span class="ann">// LeetCode 232 · 用栈实现队列</span>
+<span class="kw">import</span> java.util.Stack;
+
+<span class="kw">class</span> <span class="cls">MyQueue</span> {
+
+    <span class="kw">private</span> Stack&lt;Integer&gt; <span class="str">stack1</span>;  <span class="cmt">// 入队栈：push 专用</span>
+    <span class="kw">private</span> Stack&lt;Integer&gt; <span class="str">stack2</span>;  <span class="cmt">// 出队栈：pop / peek 专用</span>
+
+    <span class="kw">public</span> <span class="fn">MyQueue</span>() {
+        stack1 = <span class="kw">new</span> Stack&lt;&gt;();
+        stack2 = <span class="kw">new</span> Stack&lt;&gt;();
+    }
+
+    <span class="cmt">/** 将元素 x 推到队列末尾，O(1) */</span>
+    <span class="kw">public void</span> <span class="fn">push</span>(<span class="kw">int</span> x) {
+        stack1.push(x);
+    }
+
+    <span class="cmt">/** 从队列开头移除并返回元素，均摊 O(1) */</span>
+    <span class="kw">public int</span> <span class="fn">pop</span>() {
+        <span class="fn">transfer</span>();       <span class="cmt">// 懒惰转移：s2 为空才搬</span>
+        <span class="kw">return</span> stack2.pop();
+    }
+
+    <span class="cmt">/** 返回队列开头的元素（不移除），均摊 O(1) */</span>
+    <span class="kw">public int</span> <span class="fn">peek</span>() {
+        <span class="fn">transfer</span>();
+        <span class="kw">return</span> stack2.peek();
+    }
+
+    <span class="cmt">/** 队列是否为空，O(1) */</span>
+    <span class="kw">public boolean</span> <span class="fn">empty</span>() {
+        <span class="kw">return</span> stack1.isEmpty() &amp;&amp; stack2.isEmpty();
+    }
+
+    <span class="cmt">/** 仅当 stack2 为空时，将 stack1 全部倒入 stack2 */</span>
+    <span class="kw">private void</span> <span class="fn">transfer</span>() {
+        <span class="kw">if</span> (stack2.isEmpty()) {
+            <span class="kw">while</span> (!stack1.isEmpty()) {
+                stack2.push(stack1.pop());
+            }
+        }
+    }
+}
+
+<span class="cmt">/*
+ * 调用示例：
+ *   MyQueue q = new MyQueue();
+ *   q.push(1);  q.push(2);  q.push(3);
+ *   q.peek()  → 1      （stack2 此时 [3,2,1]↑，栈顶=1）
+ *   q.pop()   → 1
+ *   q.pop()   → 2
+ *   q.empty() → false
+ */</span></pre>
+  </div>
+
+  <!-- ── Complexity ── -->
+  <div class="card full">
+    <div class="card-title">⏱ 时间 & 空间复杂度</div>
+    <table>
+      <thead>
+        <tr><th>操作</th><th>最坏情况</th><th>均摊复杂度</th><th>说明</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>push(x)</td>
+          <td>O(1)</td>
+          <td class="amort">O(1)</td>
+          <td>直接压入 stack1</td>
+        </tr>
+        <tr>
+          <td>pop()</td>
+          <td class="worst">O(n)</td>
+          <td class="amort">O(1) ★</td>
+          <td>stack2 为空时触发一次性转移，但每元素仅被搬运一次</td>
+        </tr>
+        <tr>
+          <td>peek()</td>
+          <td class="worst">O(n)</td>
+          <td class="amort">O(1) ★</td>
+          <td>同 pop，只看不取</td>
+        </tr>
+        <tr>
+          <td>empty()</td>
+          <td>O(1)</td>
+          <td class="amort">O(1)</td>
+          <td>两栈均判空</td>
+        </tr>
+        <tr>
+          <td colspan="3"><b>空间复杂度</b></td>
+          <td>O(n)，两栈合计存储 n 个元素</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div><!-- /grid -->
+
+<script>
+  let s1 = [], s2 = [], cnt = 0;
+
+  function render() {
+    const b1 = document.getElementById('s1');
+    const b2 = document.getElementById('s2');
+    b1.innerHTML = '';
+    b2.innerHTML = '';
+    s1.forEach((v, i) => {
+      const d = document.createElement('div');
+      d.className = 'cell c1' + (i === s1.length - 1 ? ' hi' : '');
+      d.textContent = v;
+      b1.appendChild(d);
+    });
+    s2.forEach((v, i) => {
+      const d = document.createElement('div');
+      d.className = 'cell c2' + (i === s2.length - 1 ? ' hi' : '');
+      d.textContent = v;
+      b2.appendChild(d);
+    });
+    document.getElementById('h1').textContent = s1.length ? '↑ TOP (' + s1[s1.length-1] + ')' : '';
+    document.getElementById('h2').textContent = s2.length ? '↑ TOP (' + s2[s2.length-1] + ')' : '';
+  }
+
+  function log(msg, cls = '') {
+    const l = document.getElementById('log');
+    const sp = document.createElement('span');
+    sp.className = cls;
+    sp.textContent = '>> ' + msg;
+    l.appendChild(sp);
+    l.scrollTop = l.scrollHeight;
+    cnt++;
+    if (cnt > 25) l.removeChild(l.firstChild);
+  }
+
+  function transfer() {
+    if (s2.length === 0 && s1.length > 0) {
+      log('stack2 为空，将 stack1 全部倒入 stack2...', 'warn');
+      while (s1.length) s2.push(s1.pop());
+    }
+  }
+
+  function doPush() {
+    const v = parseInt(document.getElementById('val').value);
+    if (isNaN(v)) return;
+    s1.push(v);
+    log('push(' + v + ')  →  压入 stack1', 'ok');
+    document.getElementById('val').value = v + 1;
+    render();
+  }
+
+  function doPop() {
+    if (!s1.length && !s2.length) { log('pop() 失败：队列为空', 'err'); return; }
+    transfer();
+    const v = s2.pop();
+    log('pop()  →  返回 ' + v + '（从 stack2 弹出）', 'ok');
+    render();
+  }
+
+  function doPeek() {
+    if (!s1.length && !s2.length) { log('peek() 失败：队列为空', 'err'); return; }
+    transfer();
+    log('peek()  →  队头 = ' + s2[s2.length - 1] + '（stack2 栈顶）', 'ok');
+    render();
+  }
+
+  function doEmpty() {
+    const e = !s1.length && !s2.length;
+    log('empty()  →  ' + e, e ? 'warn' : 'info');
+  }
+
+  function doReset() {
+    s1 = []; s2 = []; cnt = 0;
+    document.getElementById('log').innerHTML = '<span class="ok">// 已重置</span>';
+    document.getElementById('val').value = 1;
+    render();
+  }
+
+  render();
+</script>
+</body>
+</html>

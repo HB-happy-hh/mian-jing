@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>103. 锯齿形层序遍历 — 图解</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Serif+SC:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117; --surface: #161b22; --surface2: #21262d;
+    --border: #30363d; --accent: #f78166; --accent2: #79c0ff;
+    --accent3: #56d364; --accent4: #e3b341; --text: #e6edf3; --muted: #8b949e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Noto Serif SC', serif; line-height: 1.7; padding: 32px 20px 80px; }
+  .container { max-width: 900px; margin: 0 auto; }
+  .header { display: flex; align-items: baseline; gap: 16px; margin-bottom: 8px; }
+  .num { font-size: 14px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+  h1 { font-size: 28px; font-weight: 900; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 12px; background: #1a2e00; color: var(--accent3); border: 1px solid #2ea043; }
+  .desc { color: var(--muted); margin: 10px 0 28px; font-size: 15px; }
+
+  .section-title {
+    font-size: 17px; font-weight: 700; margin: 36px 0 18px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-title::before { content: ''; display: inline-block; width: 4px; height: 18px; background: var(--accent); border-radius: 2px; }
+
+  /* ── 核心原理卡片 ── */
+  .insight-box {
+    background: #0f1e1f; border: 1px solid #2ea043; border-radius: 10px;
+    padding: 18px 22px; margin-bottom: 28px;
+    font-size: 15px; line-height: 1.9;
+  }
+  .insight-box strong { color: var(--accent4); }
+  .insight-box code { font-family: 'JetBrains Mono', monospace; font-size: 13px; background: #1c2128; padding: 1px 6px; border-radius: 4px; color: var(--accent); }
+
+  /* ── 步骤导航 ── */
+  .nav-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+  .nav-btn {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    padding: 6px 14px; border-radius: 6px; cursor: pointer; border: 1px solid var(--border);
+    background: var(--surface2); color: var(--muted); transition: all .2s;
+  }
+  .nav-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+  .nav-btn.active { background: #112233; border-color: var(--accent2); color: var(--accent2); font-weight: 700; }
+
+  .ctrl-bar { display: flex; gap: 12px; margin-bottom: 20px; }
+  .btn { font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 8px 20px; border-radius: 6px; cursor: pointer; border: none; transition: all .2s; }
+  .btn-primary { background: var(--accent2); color: #000; font-weight: 700; }
+  .btn-primary:hover { background: #a8d8ff; }
+  .btn-secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  /* ── 步骤面板 ── */
+  .step-panel { display: none; }
+  .step-panel.active { display: block; }
+
+  .step-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 24px; margin-bottom: 20px;
+  }
+
+  /* ── 树形图 SVG ── */
+  .tree-wrap { display: flex; justify-content: center; margin: 16px 0 8px; }
+  svg text { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; }
+
+  /* ── 队列 / LinkedList 展示 ── */
+  .ds-row { display: flex; align-items: center; gap: 0; flex-wrap: wrap; }
+  .ds-label { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+
+  .node-box {
+    display: inline-flex; flex-direction: column; align-items: center;
+    font-family: 'JetBrains Mono', monospace; font-weight: 700;
+  }
+  .node-val {
+    width: 48px; height: 40px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; transition: all .3s;
+  }
+  .node-ptr { font-size: 10px; color: var(--muted); margin-top: 3px; }
+  .arr { font-size: 22px; color: var(--muted); padding: 0 4px; margin-bottom: 16px; }
+  .arr-down { display: flex; align-items: center; justify-content: center; font-size: 22px; color: var(--muted); }
+
+  /* 颜色 */
+  .c-default { background: var(--surface2); border: 1px solid var(--border); color: var(--text); }
+  .c-queue   { background: #0d2233; border: 2px solid var(--accent2); color: var(--accent2); }
+  .c-active  { background: #1a3a4a; border: 2px solid #ffa657; color: #ffa657; }
+  .c-added-lr { background: #0d2a0d; border: 2px solid var(--accent3); color: var(--accent3); }
+  .c-added-rl { background: #2a1f00; border: 2px solid var(--accent4); color: var(--accent4); }
+  .c-done    { background: #161b22; border: 1px dashed #30363d; color: var(--muted); }
+
+  /* ── 操作说明 ── */
+  .op-box {
+    border-radius: 8px; padding: 14px 18px; margin: 12px 0;
+    font-size: 14px; line-height: 1.8;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .op-lr { background: #0d2a0d; border-left: 4px solid var(--accent3); }
+  .op-rl { background: #2a1f00; border-left: 4px solid var(--accent4); }
+  .op-info { background: #0d1e33; border-left: 4px solid var(--accent2); }
+  .op-box .tag { font-weight: 700; font-size: 13px; margin-right: 8px; }
+  .tag-lr { color: var(--accent3); }
+  .tag-rl { color: var(--accent4); }
+  .tag-info { color: var(--accent2); }
+  .op-box code { background: #1c2128; padding: 1px 5px; border-radius: 3px; }
+
+  /* ── 结果展示 ── */
+  .result-wrap { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
+  .result-layer {
+    display: flex; align-items: center; gap: 4px;
+    border-radius: 6px; padding: 6px 12px;
+    font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700;
+  }
+  .rl-lr { background: #0d2a0d; border: 1.5px solid var(--accent3); color: var(--accent3); }
+  .rl-rl { background: #2a1f00; border: 1.5px solid var(--accent4); color: var(--accent4); }
+  .rl-pending { background: var(--surface2); border: 1.5px dashed var(--border); color: var(--muted); }
+  .result-comma { color: var(--muted); font-size: 18px; }
+
+  /* ── 分隔线 ── */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+
+  /* ── 进度 ── */
+  .progress-bar { height: 4px; background: var(--surface2); border-radius: 2px; margin-bottom: 20px; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent2), var(--accent3)); border-radius: 2px; transition: width .3s; }
+  .step-counter { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted); text-align: right; margin-bottom: 8px; }
+
+  /* ── 双列布局 ── */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 600px) { .two-col { grid-template-columns: 1fr; } }
+
+  .sub-label { font-size: 13px; color: var(--muted); margin-bottom: 10px; font-family: 'JetBrains Mono', monospace; }
+  .sub-title { font-size: 14px; font-weight: 700; color: var(--accent4); margin-bottom: 10px; }
+
+  /* addFirst 动画示意 */
+  .ll-demo { display: flex; align-items: center; gap: 0; flex-wrap: nowrap; overflow-x: auto; padding: 4px 0; }
+  .ll-head-arrow { display: flex; flex-direction: column; align-items: center; margin-right: 4px; }
+  .head-tag { font-size: 10px; color: var(--accent2); font-family: 'JetBrains Mono', monospace; margin-bottom: 4px; }
+  .head-arrow-down { color: var(--accent2); font-size: 16px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <span class="num">LeetCode #103 图解</span>
+    <h1>锯齿形层序遍历</h1>
+    <span class="badge">图解版</span>
+  </div>
+  <p class="desc">以示例1 <code style="font-family:'JetBrains Mono',monospace;background:#1c2128;padding:2px 6px;border-radius:4px;color:var(--accent)">root = [3,9,20,null,null,15,7]</code> 为例，逐步演示算法执行过程。</p>
+
+  <!-- 核心原理 -->
+  <div class="section-title">先理解一个关键问题</div>
+  <div class="insight-box">
+    普通层序遍历（BFS）每层都是从左到右收集节点。<br>
+    锯齿形只需解决一个问题：<strong>偶数层如何让结果反过来？</strong><br><br>
+    答案：<strong>不改变入队顺序</strong>（永远先左后右），只改变收集节点到 level 列表的方式：<br>
+    &nbsp;&nbsp;• 奇数层（1,3,5...）→ <code>addLast(val)</code>，结果从左往右追加<br>
+    &nbsp;&nbsp;• 偶数层（2,4,6...）→ <code>addFirst(val)</code>，新值插到列表头部，自动形成反转效果
+  </div>
+
+  <!-- 步骤导航 -->
+  <div class="section-title">逐步图解（共6步）</div>
+  <div class="nav-bar">
+    <button class="nav-btn active" onclick="goStep(0)">初始状态</button>
+    <button class="nav-btn" onclick="goStep(1)">第1层处理</button>
+    <button class="nav-btn" onclick="goStep(2)">第2层：addFirst</button>
+    <button class="nav-btn" onclick="goStep(3)">addFirst原理</button>
+    <button class="nav-btn" onclick="goStep(4)">第3层处理</button>
+    <button class="nav-btn" onclick="goStep(5)">最终结果</button>
+  </div>
+
+  <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+  <div class="step-counter" id="stepCounter">步骤 1 / 6</div>
+
+  <div class="ctrl-bar">
+    <button class="btn btn-primary" id="prevBtn" onclick="goStep(currentStep-1)" disabled>← 上一步</button>
+    <button class="btn btn-primary" id="nextBtn" onclick="goStep(currentStep+1)">下一步 →</button>
+  </div>
+
+  <!-- ══ 步骤0：初始状态 ══ -->
+  <div class="step-panel active" id="panel-0">
+    <div class="step-card">
+      <div class="sub-title">初始化：将根节点加入队列</div>
+      <div class="two-col">
+        <div>
+          <div class="sub-label">二叉树结构</div>
+          <div class="tree-wrap">
+            <svg width="260" height="180" viewBox="0 0 260 180">
+              <!-- edges -->
+              <line x1="130" y1="40" x2="70"  y2="100" stroke="#30363d" stroke-width="2"/>
+              <line x1="130" y1="40" x2="190" y2="100" stroke="#30363d" stroke-width="2"/>
+              <line x1="190" y1="100" x2="155" y2="155" stroke="#30363d" stroke-width="2"/>
+              <line x1="190" y1="100" x2="225" y2="155" stroke="#30363d" stroke-width="2"/>
+              <!-- nodes -->
+              <circle cx="130" cy="40"  r="22" fill="#1a3a4a" stroke="#79c0ff" stroke-width="2.5"/>
+              <circle cx="70"  cy="100" r="22" fill="#21262d" stroke="#30363d" stroke-width="1.5"/>
+              <circle cx="190" cy="100" r="22" fill="#21262d" stroke="#30363d" stroke-width="1.5"/>
+              <circle cx="155" cy="155" r="22" fill="#21262d" stroke="#30363d" stroke-width="1.5"/>
+              <circle cx="225" cy="155" r="22" fill="#21262d" stroke="#30363d" stroke-width="1.5"/>
+              <text x="130" y="45"  text-anchor="middle" fill="#79c0ff">3</text>
+              <text x="70"  y="105" text-anchor="middle" fill="#e6edf3">9</text>
+              <text x="190" y="105" text-anchor="middle" fill="#e6edf3">20</text>
+              <text x="155" y="160" text-anchor="middle" fill="#e6edf3">15</text>
+              <text x="225" y="160" text-anchor="middle" fill="#e6edf3">7</text>
+              <!-- level labels -->
+              <text x="8" y="45"  font-size="11" fill="#8b949e" font-family="JetBrains Mono,monospace">L1</text>
+              <text x="8" y="105" font-size="11" fill="#8b949e" font-family="JetBrains Mono,monospace">L2</text>
+              <text x="8" y="160" font-size="11" fill="#8b949e" font-family="JetBrains Mono,monospace">L3</text>
+            </svg>
+          </div>
+        </div>
+        <div>
+          <div class="sub-label">Queue 队列（当前）</div>
+          <div class="ds-row" style="margin:12px 0">
+            <div class="node-box">
+              <div class="node-val c-queue">3</div>
+              <div class="node-ptr">head</div>
+            </div>
+          </div>
+          <div class="op-box op-info" style="margin-top:16px">
+            <span class="tag tag-info">初始化</span><br>
+            <code>queue.offer(root)</code><br>
+            <code>leftToRight = true</code>（第1层 从左→右）
+          </div>
+          <div class="sub-label" style="margin-top:20px">Result 结果</div>
+          <div class="result-wrap">
+            <span style="color:var(--muted);font-size:13px;font-family:'JetBrains Mono',monospace">空 []</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 步骤1：第1层 ══ -->
+  <div class="step-panel" id="panel-1">
+    <div class="step-card">
+      <div class="sub-title">第1层（奇数层）：leftToRight = true，用 addLast</div>
+      <div class="two-col">
+        <div>
+          <div class="sub-label">取出节点 3，子节点 9、20 入队</div>
+          <div class="tree-wrap">
+            <svg width="260" height="180" viewBox="0 0 260 180">
+              <line x1="130" y1="40" x2="70"  y2="100" stroke="#56d364" stroke-width="2"/>
+              <line x1="130" y1="40" x2="190" y2="100" stroke="#56d364" stroke-width="2"/>
+              <line x1="190" y1="100" x2="155" y2="155" stroke="#30363d" stroke-width="2"/>
+              <line x1="190" y1="100" x2="225" y2="155" stroke="#30363d" stroke-width="2"/>
+              <circle cx="130" cy="40"  r="22" fill="#162a00" stroke="#56d364" stroke-width="2.5"/>
+              <circle cx="70"  cy="100" r="22" fill="#0d2233" stroke="#79c0ff" stroke-width="2"/>
+              <circle cx="190" cy="100" r="22" fill="#0d2233" stroke="#79c0ff" stroke-width="2"/>
+              <circle cx="155" cy="155" r="22" fill="#21262d" stroke="#30363d" stroke-width="1.5"/>
+              <circle cx="225" cy="155" r="22" fill="#21262d" stroke="#30363d" stroke-width="1.5"/>
+              <text x="130" y="45"  text-anchor="middle" fill="#56d364">3</text>
+              <text x="70"  y="105" text-anchor="middle" fill="#79c0ff">9</text>
+              <text x="190" y="105" text-anchor="middle" fill="#79c0ff">20</text>
+              <text x="155" y="160" text-anchor="middle" fill="#e6edf3">15</text>
+              <text x="225" y="160" text-anchor="middle" fill="#e6edf3">7</text>
+              <text x="8" y="45"  font-size="11" fill="#8b949e" font-family="JetBrains Mono,monospace">L1</text>
+              <text x="8" y="105" font-size="11" fill="#8b949e" font-family="JetBrains Mono,monospace">L2</text>
+              <text x="8" y="160" font-size="11" fill="#8b949e" font-family="JetBrains Mono,monospace">L3</text>
+            </svg>
+          </div>
+        </div>
+        <div>
+          <div class="sub-label">Queue（处理后，含下一层）</div>
+          <div class="ds-row" style="margin:10px 0">
+            <div class="node-box"><div class="node-val c-queue">9</div><div class="node-ptr">head</div></div>
+            <span class="arr">→</span>
+            <div class="node-box"><div class="node-val c-queue">20</div></div>
+          </div>
+
+          <div class="op-box op-lr">
+            <span class="tag tag-lr">addLast</span>奇数层，正向追加<br>
+            取出 <code>3</code> → <code>level.addLast(3)</code><br>
+            level = <code style="color:var(--accent3)">[3]</code>
+          </div>
+
+          <div class="sub-label" style="margin-top:16px">本层 level 列表</div>
+          <div class="ds-row">
+            <div class="node-box"><div class="node-val c-added-lr">3</div><div class="node-ptr">addLast↓</div></div>
+          </div>
+
+          <div class="sub-label" style="margin-top:16px">Result</div>
+          <div class="result-wrap">
+            <div class="result-layer rl-lr">[3]</div>
+          </div>
+        </div>
+      </div>
+      <div class="op-box op-info" style="margin-top:16px">
+        第1层结束 → <code>result.add([3])</code>，方向翻转：<code>leftToRight = false</code>（下一层从右→左）
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 步骤2：第2层 ══ -->
+  <div class="step-panel" id="panel-2">
+    <div class="step-card">
+      <div class="sub-title">第2层（偶数层）：leftToRight = false，用 addFirst</div>
+      <div class="two-col">
+        <div>
+          <div class="sub-label">依次取出 9、20（入队顺序不变：先左后右）</div>
+          <div class="tree-wrap">
+            <svg width="260" height="180" viewBox="0 0 260 180">
+              <line x1="130" y1="40" x2="70"  y2="100" stroke="#30363d" stroke-width="2"/>
+              <line x1="130" y1="40" x2="190" y2="100" stroke="#30363d" stroke-width="2"/>
+              <line x1="190" y1="100" x2="155" y2="155" stroke="#56d364" stroke-width="2"/>
+              <line x1="190" y1="100" x2="225" y2="155" stroke="#56d364" stroke-width="2"/>
+              <circle cx="130" cy="40"  r="22" fill="#0d1a0d" stroke="#30363d" stroke-width="1.5"/>
+              <circle cx="70"  cy="100" r="22" fill="#162a00" stroke="#56d364" stroke-width="2.5"/>
+              <circle cx="190" cy="100" r="22" fill="#162a00" stroke="#56d364" stroke-width="2.5"/>
+              <circle cx="155" cy="155" r="22" fill="#0d2233" stroke="#79c0ff" stroke-width="2"/>
+              <circle cx="225" cy="155" r="22" fill="#0d2233" stroke="#79c0ff" stroke-width="2"/>
+              <text x="130" y="45"  text-anchor="middle" fill="#30363d">3</text>
+              <text x="70"  y="105" text-anchor="middle" fill="#56d364">9</text>
+              <text x="190" y="105" text-anchor="middle" fill="#56d364">20</text>
+              <text x="155" y="160" text-anchor="middle" fill="#79c0ff">15</text>
+              <text x="225" y="160" text-anchor="middle" fill="#79c0ff">7</text>
+              <text x="8" y="45"  font-size="11" fill="#8b949e" font-family="JetBrains Mono,monospace">L1</text>
+              <text x="8" y="105" font-size="11" fill="#8b949e" font-family="JetBrains Mono,monospace">L2</text>
+              <text x="8" y="160" font-size="11" fill="#8b949e" font-family="JetBrains Mono,monospace">L3</text>
+            </svg>
+          </div>
+        </div>
+        <div>
+          <div class="sub-label">Queue（处理后，含下一层）</div>
+          <div class="ds-row" style="margin:10px 0">
+            <div class="node-box"><div class="node-val c-queue">15</div><div class="node-ptr">head</div></div>
+            <span class="arr">→</span>
+            <div class="node-box"><div class="node-val c-queue">7</div></div>
+          </div>
+
+          <div class="op-box op-rl">
+            <span class="tag tag-rl">addFirst</span>偶数层，头部插入<br>
+            取出 <code>9</code>  → <code>level.addFirst(9)</code>  → level = <code>[9]</code><br>
+            取出 <code>20</code> → <code>level.addFirst(20)</code> → level = <code style="color:var(--accent4)">[20, 9]</code>
+          </div>
+
+          <div class="sub-label" style="margin-top:14px">本层 level 列表（形成反转！）</div>
+          <div class="ds-row">
+            <div class="node-box"><div class="node-val c-added-rl">20</div><div class="node-ptr">addFirst↓</div></div>
+            <span class="arr">→</span>
+            <div class="node-box"><div class="node-val c-added-rl">9</div><div class="node-ptr">addFirst↓</div></div>
+          </div>
+
+          <div class="sub-label" style="margin-top:14px">Result</div>
+          <div class="result-wrap">
+            <div class="result-layer rl-lr">[3]</div>
+            <span class="result-comma">,</span>
+            <div class="result-layer rl-rl">[20, 9]</div>
+          </div>
+        </div>
+      </div>
+      <div class="op-box op-info" style="margin-top:16px">
+        第2层结束 → <code>result.add([20, 9])</code>，方向翻转：<code>leftToRight = true</code>（下一层从左→右）
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 步骤3：addFirst原理 ══ -->
+  <div class="step-panel" id="panel-3">
+    <div class="step-card">
+      <div class="sub-title">重点理解：为什么 addFirst 就能反转？</div>
+
+      <div style="margin-bottom:20px">
+        <div class="sub-label">队列出队顺序（永远不变）：先左后右 → 先 9，后 20</div>
+        <div class="ds-row" style="margin: 10px 0">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--muted);margin-right:8px">出队顺序：</div>
+          <div class="node-box"><div class="node-val c-queue" style="width:60px">① 9</div></div>
+          <span class="arr">→</span>
+          <div class="node-box"><div class="node-val c-queue" style="width:60px">② 20</div></div>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <div class="two-col">
+        <div>
+          <div class="sub-label" style="color:var(--accent3)">addLast（奇数层）：追加到尾</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--muted);margin:8px 0">取出9：addLast(9)</div>
+          <div class="ll-demo">
+            <div class="ll-head-arrow"><div class="head-tag">HEAD</div><div class="head-arrow-down">↓</div></div>
+            <div class="node-box"><div class="node-val c-added-lr">9</div></div>
+          </div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--muted);margin:8px 0">取出20：addLast(20)</div>
+          <div class="ll-demo">
+            <div class="ll-head-arrow"><div class="head-tag">HEAD</div><div class="head-arrow-down">↓</div></div>
+            <div class="node-box"><div class="node-val c-added-lr">9</div></div>
+            <span class="arr" style="margin-bottom:0">→</span>
+            <div class="node-box"><div class="node-val c-added-lr">20</div></div>
+          </div>
+          <div class="op-box op-lr" style="margin-top:12px">结果：[9, 20]（左→右）✓</div>
+        </div>
+        <div>
+          <div class="sub-label" style="color:var(--accent4)">addFirst（偶数层）：插入到头</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--muted);margin:8px 0">取出9：addFirst(9)</div>
+          <div class="ll-demo">
+            <div class="ll-head-arrow"><div class="head-tag">HEAD</div><div class="head-arrow-down">↓</div></div>
+            <div class="node-box"><div class="node-val c-added-rl">9</div></div>
+          </div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--muted);margin:8px 0">取出20：addFirst(20) ← 插到头！</div>
+          <div class="ll-demo">
+            <div class="ll-head-arrow"><div class="head-tag">HEAD</div><div class="head-arrow-down">↓</div></div>
+            <div class="node-box"><div class="node-val c-active">20</div></div>
+            <span class="arr" style="margin-bottom:0">→</span>
+            <div class="node-box"><div class="node-val c-added-rl">9</div></div>
+          </div>
+          <div class="op-box op-rl" style="margin-top:12px">结果：[20, 9]（右→左）✓</div>
+        </div>
+      </div>
+
+      <div class="op-box op-info" style="margin-top:20px">
+        <span class="tag tag-info">核心原理</span><br>
+        每次 <code>addFirst</code> 都把新值"推到前面"，后来者居前。<br>
+        出队顺序是 9→20，但 addFirst 让 20 排到 9 前面，最终变成 [20, 9]。<br>
+        <strong style="color:var(--accent4)">无需真正反转数组，O(1) 完成插入。</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 步骤4：第3层 ══ -->
+  <div class="step-panel" id="panel-4">
+    <div class="step-card">
+      <div class="sub-title">第3层（奇数层）：leftToRight = true，用 addLast</div>
+      <div class="two-col">
+        <div>
+          <div class="sub-label">依次取出 15、7（先左后右）</div>
+          <div class="tree-wrap">
+            <svg width="260" height="180" viewBox="0 0 260 180">
+              <line x1="130" y1="40" x2="70"  y2="100" stroke="#30363d" stroke-width="2"/>
+              <line x1="130" y1="40" x2="190" y2="100" stroke="#30363d" stroke-width="2"/>
+              <line x1="190" y1="100" x2="155" y2="155" stroke="#30363d" stroke-width="2"/>
+              <line x1="190" y1="100" x2="225" y2="155" stroke="#30363d" stroke-width="2"/>
+              <circle cx="130" cy="40"  r="22" fill="#0d1a0d" stroke="#30363d" stroke-width="1.5"/>
+              <circle cx="70"  cy="100" r="22" fill="#0d1a0d" stroke="#30363d" stroke-width="1.5"/>
+              <circle cx="190" cy="100" r="22" fill="#0d1a0d" stroke="#30363d" stroke-width="1.5"/>
+              <circle cx="155" cy="155" r="22" fill="#162a00" stroke="#56d364" stroke-width="2.5"/>
+              <circle cx="225" cy="155" r="22" fill="#162a00" stroke="#56d364" stroke-width="2.5"/>
+              <text x="130" y="45"  text-anchor="middle" fill="#30363d">3</text>
+              <text x="70"  y="105" text-anchor="middle" fill="#30363d">9</text>
+              <text x="190" y="105" text-anchor="middle" fill="#30363d">20</text>
+              <text x="155" y="160" text-anchor="middle" fill="#56d364">15</text>
+              <text x="225" y="160" text-anchor="middle" fill="#56d364">7</text>
+              <text x="8" y="45"  font-size="11" fill="#8b949e" font-family="JetBrains Mono,monospace">L1</text>
+              <text x="8" y="105" font-size="11" fill="#8b949e" font-family="JetBrains Mono,monospace">L2</text>
+              <text x="8" y="160" font-size="11" fill="#8b949e" font-family="JetBrains Mono,monospace">L3</text>
+            </svg>
+          </div>
+        </div>
+        <div>
+          <div class="sub-label">Queue（当前为空）</div>
+          <div style="color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:13px;margin:12px 0">空 []</div>
+
+          <div class="op-box op-lr">
+            <span class="tag tag-lr">addLast</span>奇数层，正向追加<br>
+            取出 <code>15</code> → <code>level.addLast(15)</code> → level = <code>[15]</code><br>
+            取出 <code>7</code>  → <code>level.addLast(7)</code>  → level = <code style="color:var(--accent3)">[15, 7]</code>
+          </div>
+
+          <div class="sub-label" style="margin-top:14px">本层 level 列表</div>
+          <div class="ds-row">
+            <div class="node-box"><div class="node-val c-added-lr">15</div><div class="node-ptr">addLast↓</div></div>
+            <span class="arr">→</span>
+            <div class="node-box"><div class="node-val c-added-lr">7</div><div class="node-ptr">addLast↓</div></div>
+          </div>
+
+          <div class="sub-label" style="margin-top:14px">Result</div>
+          <div class="result-wrap">
+            <div class="result-layer rl-lr">[3]</div>
+            <span class="result-comma">,</span>
+            <div class="result-layer rl-rl">[20, 9]</div>
+            <span class="result-comma">,</span>
+            <div class="result-layer rl-lr">[15, 7]</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 步骤5：最终结果 ══ -->
+  <div class="step-panel" id="panel-5">
+    <div class="step-card">
+      <div class="sub-title">遍历完成！Queue 为空，输出结果</div>
+
+      <div style="margin:20px 0">
+        <div class="sub-label">最终 Result</div>
+        <div class="result-wrap" style="gap:14px;margin-top:12px">
+          <div class="result-layer rl-lr" style="font-size:16px;padding:10px 18px">
+            <span style="font-size:11px;margin-right:6px;color:var(--accent3)">L1 左→右</span>[3]
+          </div>
+          <div class="result-layer rl-rl" style="font-size:16px;padding:10px 18px">
+            <span style="font-size:11px;margin-right:6px;color:var(--accent4)">L2 右→左</span>[20, 9]
+          </div>
+          <div class="result-layer rl-lr" style="font-size:16px;padding:10px 18px">
+            <span style="font-size:11px;margin-right:6px;color:var(--accent3)">L3 左→右</span>[15, 7]
+          </div>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <div class="sub-label">全程总结</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
+        <div class="op-box op-info">
+          <span class="tag tag-info">规律1</span>入队顺序<strong style="color:#fff">永远</strong>是先左子节点再右子节点，<strong style="color:#fff">从不改变</strong>。
+        </div>
+        <div class="op-box op-lr">
+          <span class="tag tag-lr">规律2</span>奇数层用 <code>addLast</code>，节点按出队顺序追加 → 左到右。
+        </div>
+        <div class="op-box op-rl">
+          <span class="tag tag-rl">规律3</span>偶数层用 <code>addFirst</code>，后出队的节点插到头部 → 自动反转为右到左。
+        </div>
+        <div class="op-box op-info">
+          <span class="tag tag-info">规律4</span>布尔值 <code>leftToRight</code> 每层末尾取反一次，交替控制使用哪种插入方式。
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <div class="sub-label">一句话记忆</div>
+      <div style="background:#0d1e33;border:1px solid var(--accent2);border-radius:8px;padding:16px 20px;font-size:15px;line-height:1.9">
+        🔑 <strong style="color:var(--accent2)">入队不变，收集变方向</strong><br>
+        奇数层 <code>addLast</code> → 正序；偶数层 <code>addFirst</code> → 自动逆序。
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let currentStep = 0;
+const totalSteps = 6;
+
+function goStep(n) {
+  if (n < 0 || n >= totalSteps) return;
+  document.getElementById('panel-' + currentStep).classList.remove('active');
+  document.querySelectorAll('.nav-btn')[currentStep].classList.remove('active');
+  currentStep = n;
+  document.getElementById('panel-' + currentStep).classList.add('active');
+  document.querySelectorAll('.nav-btn')[currentStep].classList.add('active');
+  document.getElementById('prevBtn').disabled = currentStep === 0;
+  document.getElementById('nextBtn').disabled = currentStep === totalSteps - 1;
+  document.getElementById('progressFill').style.width = `${(currentStep / (totalSteps - 1)) * 100}%`;
+  document.getElementById('stepCounter').textContent = `步骤 ${currentStep + 1} / ${totalSteps}`;
+  document.getElementById('nextBtn').textContent = currentStep === totalSteps - 1 ? '已完成 ✓' : '下一步 →';
+}
+
+// 键盘导航
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') goStep(currentStep + 1);
+  if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   goStep(currentStep - 1);
+});
+</script>
+</body>
+</html>

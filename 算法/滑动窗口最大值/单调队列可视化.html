@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>滑动窗口最大值 - 单调队列可视化</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Sans+SC:wght@400;700;900&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0f0f1a;
+    color: #e0e0ff;
+    font-family: 'Noto Sans SC', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 30px 20px;
+  }
+
+  h1 {
+    font-size: 1.6rem;
+    font-weight: 900;
+    letter-spacing: 2px;
+    color: #a78bfa;
+    margin-bottom: 6px;
+  }
+  .subtitle { color: #6b7280; font-size: 0.85rem; margin-bottom: 30px; }
+
+  .container {
+    width: 100%;
+    max-width: 860px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* ===== 操作说明面板 ===== */
+  .action-panel {
+    background: #1a1a2e;
+    border: 1px solid #2d2d50;
+    border-left: 4px solid #a78bfa;
+    border-radius: 10px;
+    padding: 16px 20px;
+    min-height: 70px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .action-step { font-size: 0.75rem; color: #6b7280; margin-bottom: 4px; font-family: 'JetBrains Mono', monospace; }
+  .action-text { font-size: 1rem; color: #e2e8f0; line-height: 1.5; }
+  .action-text .highlight { color: #f59e0b; font-weight: 700; }
+  .action-text .remove { color: #f87171; font-weight: 700; }
+  .action-text .add { color: #34d399; font-weight: 700; }
+  .action-text .result { color: #60a5fa; font-weight: 700; }
+
+  /* ===== 数组区 ===== */
+  .section-label {
+    font-size: 0.72rem;
+    color: #6b7280;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .array-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+  }
+
+  .cell {
+    width: 58px;
+    height: 58px;
+    border-radius: 10px;
+    border: 2px solid #2d2d50;
+    background: #1a1a2e;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    transition: all 0.35s ease;
+    position: relative;
+  }
+  .cell .val { font-size: 1.2rem; font-weight: 700; }
+  .cell .idx { font-size: 0.65rem; color: #4b5563; margin-top: 2px; }
+
+  .cell.in-window {
+    border-color: #6d28d9;
+    background: #1e1340;
+    box-shadow: 0 0 12px #6d28d940;
+  }
+  .cell.current {
+    border-color: #f59e0b;
+    background: #2a1f00;
+    box-shadow: 0 0 16px #f59e0b50;
+    transform: translateY(-4px);
+  }
+  .cell.current .val { color: #f59e0b; }
+  .cell.out { opacity: 0.3; }
+
+  /* ===== 双端队列区 ===== */
+  .deque-wrapper {
+    background: #12121f;
+    border: 1px solid #2d2d50;
+    border-radius: 12px;
+    padding: 16px 20px;
+  }
+
+  .deque-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.7rem;
+    color: #6b7280;
+    margin-bottom: 6px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .deque-track {
+    display: flex;
+    gap: 6px;
+    min-height: 70px;
+    align-items: center;
+    border: 2px dashed #2d2d50;
+    border-radius: 8px;
+    padding: 8px 12px;
+    position: relative;
+  }
+
+  .deque-empty {
+    color: #374151;
+    font-size: 0.85rem;
+    font-family: 'JetBrains Mono', monospace;
+    width: 100%;
+    text-align: center;
+  }
+
+  .deque-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #1e1b4b;
+    border: 2px solid #4c1d95;
+    border-radius: 8px;
+    padding: 6px 10px;
+    min-width: 52px;
+    font-family: 'JetBrains Mono', monospace;
+    transition: all 0.3s ease;
+    animation: slideIn 0.3s ease;
+  }
+  .deque-cell.removing {
+    animation: fadeOut 0.3s ease forwards;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: scale(0.7); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes fadeOut {
+    from { opacity: 1; transform: scale(1); }
+    to { opacity: 0; transform: scale(0.7); }
+  }
+  .deque-cell .d-idx { font-size: 0.65rem; color: #7c3aed; }
+  .deque-cell .d-val { font-size: 1.1rem; font-weight: 700; color: #a78bfa; }
+
+  .deque-cell.head { border-color: #34d399; }
+  .deque-cell.head .d-idx { color: #34d399; }
+  .deque-cell.head .d-val { color: #34d399; }
+
+  .deque-arrow {
+    color: #374151;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+  }
+
+  /* ===== 结果区 ===== */
+  .result-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .result-cell {
+    width: 58px;
+    height: 58px;
+    border-radius: 10px;
+    border: 2px solid #1f2937;
+    background: #111827;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    transition: all 0.35s ease;
+  }
+  .result-cell .val { font-size: 1.2rem; font-weight: 700; color: #374151; }
+  .result-cell .idx { font-size: 0.65rem; color: #374151; margin-top: 2px; }
+  .result-cell.filled {
+    border-color: #1d4ed8;
+    background: #0f1f3d;
+  }
+  .result-cell.filled .val { color: #60a5fa; }
+  .result-cell.filled .idx { color: #3b82f6; }
+  .result-cell.just-filled {
+    border-color: #60a5fa;
+    box-shadow: 0 0 16px #60a5fa50;
+    animation: pop 0.4s ease;
+  }
+  @keyframes pop {
+    0% { transform: scale(0.8); }
+    60% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+  }
+
+  /* ===== 代码高亮 ===== */
+  .code-block {
+    background: #0d1117;
+    border: 1px solid #21262d;
+    border-radius: 10px;
+    padding: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    line-height: 1.8;
+    overflow-x: auto;
+  }
+  .code-line { padding: 0 8px; border-radius: 4px; transition: background 0.2s; white-space: pre; }
+  .code-line.active { background: #1f2937; border-left: 3px solid #a78bfa; margin-left: -3px; }
+  .kw { color: #ff7b72; }
+  .fn { color: #d2a8ff; }
+  .cm { color: #8b949e; }
+  .nm { color: #79c0ff; }
+  .op { color: #ff7b72; }
+  .str { color: #a5d6ff; }
+
+  /* ===== 控制按钮 ===== */
+  .controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    padding: 10px 24px;
+    border-radius: 8px;
+    border: none;
+    font-family: 'Noto Sans SC', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn:active { transform: scale(0.95); }
+  .btn-prev { background: #1f2937; color: #9ca3af; }
+  .btn-prev:hover { background: #374151; color: #e5e7eb; }
+  .btn-next { background: #6d28d9; color: #fff; }
+  .btn-next:hover { background: #7c3aed; box-shadow: 0 0 20px #7c3aed60; }
+  .btn-next:disabled { background: #2d2d50; color: #4b5563; cursor: not-allowed; box-shadow: none; }
+  .btn-reset { background: #1f2937; color: #6b7280; }
+  .btn-reset:hover { background: #374151; }
+
+  .progress {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: #4b5563;
+  }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<h1>单调队列 · 滑动窗口最大值</h1>
+<p class="subtitle">nums = [1, 3, -1, -3, 5, 3, 6, 7] &nbsp;|&nbsp; k = 3</p>
+
+<div class="container">
+
+  <!-- 操作说明 -->
+  <div class="action-panel">
+    <div class="action-step" id="stepLabel">步骤 0 / 初始状态</div>
+    <div class="action-text" id="actionText">点击「下一步」开始演示。单调队列始终保持<span class="highlight">单调递减</span>，队首是当前窗口最大值。</div>
+  </div>
+
+  <!-- 数组 -->
+  <div>
+    <div class="section-label">▸ 原始数组 nums</div>
+    <div class="array-row" id="arrayRow"></div>
+  </div>
+
+  <!-- 双端队列 -->
+  <div class="deque-wrapper">
+    <div class="section-label">▸ 双端队列 deque（存下标，队首=最大值）</div>
+    <div class="deque-labels">
+      <span>← 队首 peekFirst()  pollFirst()</span>
+      <span>offerLast()  peekLast()  pollLast() 队尾 →</span>
+    </div>
+    <div class="deque-track" id="dequeTrack">
+      <span class="deque-empty">（空）</span>
+    </div>
+  </div>
+
+  <!-- 结果 + 代码 -->
+  <div class="grid-2">
+    <div>
+      <div class="section-label">▸ 结果数组 result</div>
+      <div class="result-row" id="resultRow"></div>
+    </div>
+    <div>
+      <div class="section-label">▸ 当前执行到的代码</div>
+      <div class="code-block" id="codeBlock"></div>
+    </div>
+  </div>
+
+  <!-- 控制 -->
+  <div class="controls">
+    <button class="btn btn-reset" onclick="reset()">↺ 重置</button>
+    <button class="btn btn-prev" onclick="prevStep()">← 上一步</button>
+    <span class="progress" id="progress">0 / ?</span>
+    <button class="btn btn-next" id="btnNext" onclick="nextStep()">下一步 →</button>
+  </div>
+
+</div>
+
+<script>
+const nums = [1, 3, -1, -3, 5, 3, 6, 7];
+const k = 3;
+const n = nums.length;
+const resultLen = n - k + 1;
+
+// 预计算所有步骤
+function computeSteps() {
+  const steps = [];
+  const deque = [];
+  const result = new Array(resultLen).fill(null);
+
+  steps.push({
+    type: 'init',
+    i: -1,
+    deque: [],
+    result: [...result],
+    codeLine: -1,
+    action: '初始状态：deque 为空，result 全部待填写。<br>外层 for 循环准备从 i=0 开始遍历。'
+  });
+
+  for (let i = 0; i < n; i++) {
+    // 进入循环
+    steps.push({
+      type: 'enter',
+      i,
+      deque: [...deque],
+      result: [...result],
+      codeLine: 0,
+      action: `<span class="highlight">i = ${i}</span>，当前元素 nums[${i}] = <span class="highlight">${nums[i]}</span>，进入循环。`
+    });
+
+    // 检查队首是否过期
+    const windowLeft = i - k + 1;
+    if (deque.length > 0 && deque[0] < windowLeft) {
+      const expiredIdx = deque.shift();
+      steps.push({
+        type: 'removeHead',
+        i,
+        deque: [...deque],
+        result: [...result],
+        codeLine: 1,
+        removed: expiredIdx,
+        action: `队首下标 <span class="remove">${expiredIdx}</span> < 窗口左边界 ${windowLeft}，已滑出窗口，<span class="remove">弹出队首</span>。`
+      });
+    } else {
+      steps.push({
+        type: 'checkHead',
+        i,
+        deque: [...deque],
+        result: [...result],
+        codeLine: 1,
+        action: deque.length === 0
+          ? `队列为空，无需检查队首是否过期。`
+          : `队首下标 ${deque[0]} ≥ 窗口左边界 ${windowLeft}，<span class="add">队首有效</span>，保留。`
+      });
+    }
+
+    // 维护单调性，弹出队尾比当前小的
+    let removedTail = [];
+    while (deque.length > 0 && nums[deque[deque.length - 1]] < nums[i]) {
+      const tailIdx = deque.pop();
+      removedTail.push(tailIdx);
+      steps.push({
+        type: 'removeTail',
+        i,
+        deque: [...deque],
+        result: [...result],
+        codeLine: 2,
+        removed: tailIdx,
+        action: `队尾下标 ${tailIdx}（值 <span class="remove">${nums[tailIdx]}</span>）< 当前值 <span class="highlight">${nums[i]}</span>，<span class="remove">弹出队尾</span>。<br><small style="color:#6b7280">理由：它更老又更小，永远不可能是答案</small>`
+      });
+    }
+
+    if (removedTail.length === 0) {
+      steps.push({
+        type: 'checkTail',
+        i,
+        deque: [...deque],
+        result: [...result],
+        codeLine: 2,
+        action: deque.length === 0
+          ? `队列为空，无需弹出队尾。`
+          : `队尾值 ${nums[deque[deque.length-1]]} ≥ ${nums[i]}，<span class="add">单调性满足</span>，不弹出。`
+      });
+    }
+
+    // 加入当前下标
+    deque.push(i);
+    steps.push({
+      type: 'pushTail',
+      i,
+      deque: [...deque],
+      result: [...result],
+      codeLine: 3,
+      action: `将下标 <span class="add">${i}</span>（值 <span class="add">${nums[i]}</span>）<span class="add">加入队尾</span>。`
+    });
+
+    // 记录结果
+    if (i >= k - 1) {
+      const maxVal = nums[deque[0]];
+      result[i - k + 1] = maxVal;
+      steps.push({
+        type: 'record',
+        i,
+        deque: [...deque],
+        result: [...result],
+        codeLine: 4,
+        justFilled: i - k + 1,
+        action: `窗口已形成（i=${i} ≥ k-1=${k-1}）。<br>队首下标 ${deque[0]} 对应的值 <span class="result">${maxVal}</span> 就是当前窗口最大值，存入 <span class="result">result[${i-k+1}] = ${maxVal}</span>。`
+      });
+    } else {
+      steps.push({
+        type: 'noRecord',
+        i,
+        deque: [...deque],
+        result: [...result],
+        codeLine: 4,
+        action: `i = ${i} < k-1 = ${k-1}，窗口还未凑满 ${k} 个元素，暂不记录结果。`
+      });
+    }
+  }
+
+  steps.push({
+    type: 'done',
+    i: n,
+    deque: [],
+    result: [...result],
+    codeLine: -1,
+    action: `✅ 遍历完成！最终结果 result = [<span class="result">${result.join(', ')}</span>]`
+  });
+
+  return steps;
+}
+
+const steps = computeSteps();
+let current = 0;
+
+const codeLines = [
+  { text: '<span class="kw">while</span> (!deque.isEmpty() && deque.<span class="fn">peekFirst</span>() < i - k + 1)', label: '① 检查队首是否滑出窗口' },
+  { text: '    deque.<span class="fn">pollFirst</span>();  <span class="cm">// 弹出过期队首</span>', label: '' },
+  { text: '<span class="kw">while</span> (!deque.isEmpty() && nums[deque.<span class="fn">peekLast</span>()] < nums[i])', label: '② 弹出队尾比当前小的元素' },
+  { text: '    deque.<span class="fn">pollLast</span>();   <span class="cm">// 维护单调递减</span>', label: '' },
+  { text: 'deque.<span class="fn">offerLast</span>(i);      <span class="cm">// 当前下标入队</span>', label: '③ 加入当前下标' },
+  { text: '<span class="kw">if</span> (i >= k - 1)  result[i-k+1] = nums[deque.<span class="fn">peekFirst</span>()];', label: '④ 记录窗口最大值' },
+];
+
+const codeLineMap = { 1: [0,1], 2: [2,3], 3: [4], 4: [5] };
+
+function renderCode(codeLine) {
+  const activeLines = codeLineMap[codeLine] || [];
+  let html = '';
+  codeLines.forEach((line, idx) => {
+    const isActive = activeLines.includes(idx);
+    html += `<div class="code-line${isActive ? ' active' : ''}">${line.text}</div>`;
+  });
+  document.getElementById('codeBlock').innerHTML = html;
+}
+
+function renderArrayRow(step) {
+  const { i, deque } = step;
+  const windowLeft = Math.max(0, i - k + 1);
+  const windowRight = i;
+  let html = '';
+  nums.forEach((v, idx) => {
+    let cls = 'cell';
+    if (idx === i && step.type !== 'init' && step.type !== 'done') cls += ' current';
+    else if (idx >= windowLeft && idx <= windowRight && step.type !== 'init' && step.type !== 'done' && i >= 0) cls += ' in-window';
+    else if (i >= 0 && idx < windowLeft) cls += ' out';
+    html += `<div class="${cls}"><span class="val">${v}</span><span class="idx">[${idx}]</span></div>`;
+  });
+  document.getElementById('arrayRow').innerHTML = html;
+}
+
+function renderDeque(step) {
+  const { deque } = step;
+  const track = document.getElementById('dequeTrack');
+  if (deque.length === 0) {
+    track.innerHTML = '<span class="deque-empty">（空）</span>';
+    return;
+  }
+  let html = '';
+  deque.forEach((idx, pos) => {
+    const isHead = pos === 0;
+    html += `<div class="deque-cell${isHead ? ' head' : ''}">
+      <span class="d-idx">idx=${idx}</span>
+      <span class="d-val">${nums[idx]}</span>
+    </div>`;
+    if (pos < deque.length - 1) html += '<span class="deque-arrow">→</span>';
+  });
+  track.innerHTML = html;
+}
+
+function renderResult(step) {
+  const { result, justFilled } = step;
+  let html = '';
+  for (let i = 0; i < resultLen; i++) {
+    const v = result[i];
+    let cls = 'result-cell';
+    if (v !== null) {
+      cls += ' filled';
+      if (justFilled === i) cls += ' just-filled';
+    }
+    html += `<div class="${cls}"><span class="val">${v !== null ? v : '?'}</span><span class="idx">[${i}]</span></div>`;
+  }
+  document.getElementById('resultRow').innerHTML = html;
+}
+
+function render() {
+  const step = steps[current];
+  document.getElementById('stepLabel').textContent = `步骤 ${current} / ${steps.length - 1}`;
+  document.getElementById('actionText').innerHTML = step.action;
+  document.getElementById('progress').textContent = `${current} / ${steps.length - 1}`;
+  document.getElementById('btnNext').disabled = current >= steps.length - 1;
+  renderCode(step.codeLine);
+  renderArrayRow(step);
+  renderDeque(step);
+  renderResult(step);
+}
+
+function nextStep() {
+  if (current < steps.length - 1) { current++; render(); }
+}
+function prevStep() {
+  if (current > 0) { current--; render(); }
+}
+function reset() {
+  current = 0; render();
+}
+
+// 初始化
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>46. 全排列 — 回溯图解</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Serif+SC:wght@400;700;900&display=swap');
+
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --accent: #f7c948;
+      --accent2: #58a6ff;
+      --accent3: #3fb950;
+      --danger: #f85149;
+      --muted: #8b949e;
+      --text: #e6edf3;
+      --code-bg: #1f2937;
+      --purple: #bc8cff;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Noto Serif SC', serif;
+      min-height: 100vh;
+      padding: 48px 24px 80px;
+    }
+
+    .page { max-width: 1000px; margin: 0 auto; }
+
+    header {
+      border-left: 5px solid var(--accent);
+      padding-left: 20px;
+      margin-bottom: 48px;
+    }
+    header .tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--accent);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    header h1 { font-size: 36px; font-weight: 900; line-height: 1.2; }
+    header p { color: var(--muted); margin-top: 10px; font-size: 15px; line-height: 1.7; }
+
+    .section-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── 概念区 ── */
+    .concept-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+    .concept-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+    }
+    .concept-card .num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .concept-card h3 { font-size: 15px; margin-bottom: 6px; }
+    .concept-card p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+    .c1 .num { color: var(--accent2); }
+    .c2 .num { color: var(--accent3); }
+    .c3 .num { color: var(--danger); }
+
+    /* ── 交互区布局 ── */
+    .interactive-layout {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 24px;
+      margin-bottom: 40px;
+      align-items: start;
+    }
+
+    /* ── 树图 ── */
+    .tree-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+    }
+    #tree-svg {
+      width: 100%;
+      overflow: visible;
+    }
+
+    /* ── 右侧状态面板 ── */
+    .state-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .state-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px;
+    }
+    .state-card .label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    /* path display */
+    .path-boxes {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      min-height: 44px;
+      align-items: center;
+    }
+    .path-box {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      background: var(--accent2);
+      color: #fff;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 18px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: popIn 0.2s ease;
+    }
+    .path-empty {
+      color: var(--border);
+      font-size: 13px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    @keyframes popIn {
+      from { transform: scale(0.6); opacity: 0; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+
+    /* used array */
+    .used-row {
+      display: flex;
+      gap: 8px;
+    }
+    .used-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .used-num {
+      width: 36px;
+      height: 36px;
+      border-radius: 6px;
+      border: 2px solid var(--border);
+      background: var(--code-bg);
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 16px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.25s;
+    }
+    .used-num.active {
+      background: var(--danger);
+      border-color: var(--danger);
+      color: #fff;
+    }
+    .used-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+    }
+    .used-label.active { color: var(--danger); }
+
+    /* log */
+    .log-box {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 1.8;
+      min-height: 60px;
+      color: var(--text);
+    }
+    .log-box .action { color: var(--accent2); }
+    .log-box .backtrack { color: var(--danger); }
+    .log-box .collect { color: var(--accent3); }
+    .log-box .check { color: var(--muted); }
+
+    /* results */
+    .results-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-height: 36px;
+    }
+    .result-chip {
+      background: var(--code-bg);
+      border: 1px solid var(--accent3);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--accent3);
+      animation: popIn 0.3s ease;
+    }
+
+    /* ── 控制按钮 ── */
+    .controls {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .btn {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      padding: 10px 22px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-weight: 700;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #0d1117;
+    }
+    .btn-primary:hover { background: #ffd96b; }
+    .btn-primary:disabled  { background: var(--border); color: var(--muted); cursor: not-allowed; }
+    .btn-secondary:disabled { border-color: var(--border); color: var(--border); cursor: not-allowed; }
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .btn-secondary:hover { border-color: var(--text); color: var(--text); }
+
+    .step-counter {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+      margin-left: auto;
+    }
+
+    /* ── 代码区 ── */
+    .code-block {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 2;
+      overflow-x: auto;
+      margin-bottom: 40px;
+      position: relative;
+    }
+    .code-line { padding: 0 8px; border-radius: 4px; transition: background 0.2s; white-space: pre; }
+    .code-line.highlight { background: rgba(247,201,72,0.15); border-left: 3px solid var(--accent); padding-left: 5px; }
+    .kw { color: #ff7b72; }
+    .fn { color: #d2a8ff; }
+    .cm { color: #8b949e; font-style: italic; }
+    .str { color: #a5d6ff; }
+    .num-lit { color: #79c0ff; }
+
+    /* SVG tree styles */
+    .tree-edge { stroke: var(--border); stroke-width: 1.5; fill: none; }
+    .tree-edge.active { stroke: var(--accent2); stroke-width: 2.5; }
+    .tree-edge.backtrack { stroke: var(--danger); stroke-width: 2; stroke-dasharray: 5 3; }
+
+    .tree-node circle {
+      fill: var(--code-bg);
+      stroke: var(--border);
+      stroke-width: 1.5;
+    }
+    .tree-node.active circle { fill: var(--accent2); stroke: var(--accent2); }
+    .tree-node.visited circle { fill: var(--surface); stroke: var(--accent3); stroke-width: 1.5; }
+    .tree-node.backtracked circle { fill: var(--surface); stroke: var(--border); stroke-width: 1; }
+    .tree-node.result circle { fill: var(--accent3); stroke: var(--accent3); }
+    .tree-node text {
+      fill: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      text-anchor: middle;
+      dominant-baseline: central;
+      pointer-events: none;
+    }
+    .tree-node.active text { fill: #0d1117; font-weight: 700; }
+    .tree-node.result text { fill: #0d1117; font-weight: 700; }
+    .edge-label {
+      fill: var(--accent);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      text-anchor: middle;
+    }
+    .edge-label.backtrack-label { fill: var(--danger); }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="tag">Backtracking · LeetCode 46</div>
+    <h1>全排列</h1>
+    <p>给定不含重复数字的数组，返回所有可能的全排列。<br>核心算法：<strong>回溯（Backtracking）</strong>—— 沿决策树深入，走不下去就原路退回。</p>
+  </header>
+
+  <!-- 概念 -->
+  <p class="section-title">核心三步</p>
+  <div class="concept-grid" style="margin-bottom:40px">
+    <div class="concept-card c1">
+      <div class="num">①</div>
+      <h3>选择</h3>
+      <p>从未使用的数中选一个，加入当前路径，并标记为已使用。</p>
+    </div>
+    <div class="concept-card c2">
+      <div class="num">②</div>
+      <h3>递归</h3>
+      <p>路径长度等于数组长度时，记录结果；否则继续深入下一层。</p>
+    </div>
+    <div class="concept-card c3">
+      <div class="num">③</div>
+      <h3>撤销（回溯）</h3>
+      <p>递归返回后，把刚才加入的数移出路径，标记恢复未使用。</p>
+    </div>
+  </div>
+
+  <!-- 控制 -->
+  <p class="section-title">动画演示 · nums = [1, 2, 3]</p>
+  <div class="controls">
+    <button class="btn btn-secondary" id="btn-prev" disabled>◀ 上一步</button>
+    <button class="btn btn-primary" id="btn-next">下一步 ▶</button>
+    <button class="btn btn-secondary" id="btn-reset">重置</button>
+    <span class="step-counter" id="step-counter">步骤 0 / 0</span>
+  </div>
+
+  <!-- 交互区 -->
+  <div class="interactive-layout">
+    <!-- 树图 -->
+    <div class="tree-panel">
+      <svg id="tree-svg" viewBox="0 0 620 420" height="420"></svg>
+    </div>
+
+    <!-- 状态面板 -->
+    <div class="state-panel">
+      <div class="state-card">
+        <div class="label">当前路径 path</div>
+        <div class="path-boxes" id="path-display">
+          <span class="path-empty">[ 空 ]</span>
+        </div>
+      </div>
+      <div class="state-card">
+        <div class="label">used[] 标记</div>
+        <div class="used-row" id="used-display"></div>
+      </div>
+      <div class="state-card">
+        <div class="label">当前操作</div>
+        <div class="log-box" id="log-display">点击「下一步」开始演示…</div>
+      </div>
+      <div class="state-card">
+        <div class="label">已收集结果</div>
+        <div class="results-list" id="results-display">
+          <span class="path-empty">暂无</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 代码 -->
+  <p class="section-title">Java 代码</p>
+  <div class="code-block" id="code-block">
+<div class="code-line" id="cl-0"><span class="kw">public</span> List&lt;List&lt;Integer&gt;&gt; <span class="fn">permute</span>(<span class="kw">int</span>[] nums) {</div>
+<div class="code-line" id="cl-1">    List&lt;List&lt;Integer&gt;&gt; result = <span class="kw">new</span> ArrayList&lt;&gt;();</div>
+<div class="code-line" id="cl-2">    <span class="kw">boolean</span>[] used = <span class="kw">new</span> <span class="kw">boolean</span>[nums.length];</div>
+<div class="code-line" id="cl-3">    <span class="fn">backtrack</span>(nums, used, <span class="kw">new</span> ArrayList&lt;&gt;(), result);</div>
+<div class="code-line" id="cl-4">    <span class="kw">return</span> result;</div>
+<div class="code-line" id="cl-5">}</div>
+<div class="code-line" id="cl-6">&nbsp;</div>
+<div class="code-line" id="cl-7"><span class="kw">void</span> <span class="fn">backtrack</span>(<span class="kw">int</span>[] nums, <span class="kw">boolean</span>[] used,</div>
+<div class="code-line" id="cl-8">              List&lt;Integer&gt; path, List&lt;List&lt;Integer&gt;&gt; result) {</div>
+<div class="code-line" id="cl-9">    <span class="kw">if</span> (path.size() == nums.length) {       <span class="cm">// ← 终止条件</span></div>
+<div class="code-line" id="cl-10">        result.add(<span class="kw">new</span> ArrayList&lt;&gt;(path));  <span class="cm">// ← 收集结果（拷贝！）</span></div>
+<div class="code-line" id="cl-11">        <span class="kw">return</span>;</div>
+<div class="code-line" id="cl-12">    }</div>
+<div class="code-line" id="cl-13">    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num-lit">0</span>; i &lt; nums.length; i++) {</div>
+<div class="code-line" id="cl-14">        <span class="kw">if</span> (used[i]) <span class="kw">continue</span>;          <span class="cm">// ← 跳过已使用</span></div>
+<div class="code-line" id="cl-15">        used[i] = <span class="kw">true</span>;                 <span class="cm">// ← ① 选择</span></div>
+<div class="code-line" id="cl-16">        path.add(nums[i]);</div>
+<div class="code-line" id="cl-17">        <span class="fn">backtrack</span>(nums, used, path, result); <span class="cm">// ← ② 递归</span></div>
+<div class="code-line" id="cl-18">        used[i] = <span class="kw">false</span>;                <span class="cm">// ← ③ 撤销</span></div>
+<div class="code-line" id="cl-19">        path.remove(path.size() - <span class="num-lit">1</span>);</div>
+<div class="code-line" id="cl-20">    }</div>
+<div class="code-line" id="cl-21">}</div>
+  </div>
+
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+//  预先把 nums=[1,2,3] 的整个回溯过程录制下来
+// ─────────────────────────────────────────────
+const NUMS = [1, 2, 3];
+
+// 每一步记录 { type, path, used, nodeId, msg, codeLine, results }
+const steps = [];
+const collectedResults = [];
+
+function record(type, path, used, nodeId, msg, codeLine) {
+  steps.push({
+    type,
+    path: [...path],
+    used: [...used],
+    nodeId,
+    msg,
+    codeLine,
+    results: collectedResults.map(r => [...r])
+  });
+}
+
+function simulate() {
+  const path = [];
+  const used = new Array(NUMS.length).fill(false);
+
+  function bt(depth) {
+    const nodeId = buildNodeId(path);
+    if (path.length === NUMS.length) {
+      collectedResults.push([...path]);
+      record('collect', path, used, nodeId,
+        `<span class="collect">✓ 收集结果：[${path.join(', ')}]</span>`, 10);
+      return;
+    }
+    record('enter', path, used, nodeId,
+      `<span class="check">进入节点 [${path.join(',')||'root'}]，检查每个数字…</span>`, 13);
+    for (let i = 0; i < NUMS.length; i++) {
+      if (used[i]) {
+        record('skip', path, used, nodeId,
+          `<span class="check">nums[${i}]=${NUMS[i]} 已被使用，跳过</span>`, 14);
+        continue;
+      }
+      // 选择
+      used[i] = true;
+      path.push(NUMS[i]);
+      const childId = buildNodeId(path);
+      record('choose', path, used, childId,
+        `<span class="action">① 选择 ${NUMS[i]}，path=[${path.join(', ')}]</span>`, 15);
+      bt(depth + 1);
+      // 撤销
+      path.pop();
+      used[i] = false;
+      record('backtrack', path, used, nodeId,
+        `<span class="backtrack">③ 回溯，撤销 ${NUMS[i]}，path=[${path.join(', ')||'空'}]</span>`, 18);
+    }
+  }
+
+  bt(0);
+}
+
+function buildNodeId(path) {
+  return 'n_' + (path.length === 0 ? 'root' : path.join('_'));
+}
+
+simulate();
+
+// ─────────────────────────────────────────────
+//  构建树结构（用于 SVG 布局）
+// ─────────────────────────────────────────────
+// 手工定义 [1,2,3] 完整决策树节点坐标
+const SVG_W = 620, SVG_H = 420;
+
+// 层次：root(0) → 3个 → 6个 → 6个
+const nodes = {
+  'n_root':  { x: 310, y: 30,  label: '[ ]',     depth: 0 },
+  'n_1':     { x: 100, y: 110, label: '[1]',    depth: 1 },
+  'n_2':     { x: 310, y: 110, label: '[2]',    depth: 1 },
+  'n_3':     { x: 520, y: 110, label: '[3]',    depth: 1 },
+  'n_1_2':   { x: 50,  y: 210, label: '[1,2]',  depth: 2 },
+  'n_1_3':   { x: 150, y: 210, label: '[1,3]',  depth: 2 },
+  'n_2_1':   { x: 250, y: 210, label: '[2,1]',  depth: 2 },
+  'n_2_3':   { x: 360, y: 210, label: '[2,3]',  depth: 2 },
+  'n_3_1':   { x: 460, y: 210, label: '[3,1]',  depth: 2 },
+  'n_3_2':   { x: 575, y: 210, label: '[3,2]',  depth: 2 },
+  'n_1_2_3': { x: 50,  y: 330, label: '1,2,3',  depth: 3 },
+  'n_1_3_2': { x: 150, y: 330, label: '1,3,2',  depth: 3 },
+  'n_2_1_3': { x: 250, y: 330, label: '2,1,3',  depth: 3 },
+  'n_2_3_1': { x: 360, y: 330, label: '2,3,1',  depth: 3 },
+  'n_3_1_2': { x: 460, y: 330, label: '3,1,2',  depth: 3 },
+  'n_3_2_1': { x: 575, y: 330, label: '3,2,1',  depth: 3 },
+};
+
+const edges = [
+  ['n_root','n_1','1'], ['n_root','n_2','2'], ['n_root','n_3','3'],
+  ['n_1','n_1_2','2'],  ['n_1','n_1_3','3'],
+  ['n_2','n_2_1','1'],  ['n_2','n_2_3','3'],
+  ['n_3','n_3_1','1'],  ['n_3','n_3_2','2'],
+  ['n_1_2','n_1_2_3','3'], ['n_1_3','n_1_3_2','2'],
+  ['n_2_1','n_2_1_3','3'], ['n_2_3','n_2_3_1','1'],
+  ['n_3_1','n_3_1_2','2'], ['n_3_2','n_3_2_1','1'],
+];
+
+// ─────────────────────────────────────────────
+//  渲染 SVG
+// ─────────────────────────────────────────────
+const svg = document.getElementById('tree-svg');
+
+function makeSVGEl(tag, attrs) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+
+const edgeGroup = makeSVGEl('g', { id: 'edges' });
+const nodeGroup = makeSVGEl('g', { id: 'nodes' });
+svg.appendChild(edgeGroup);
+svg.appendChild(nodeGroup);
+
+// draw edges
+const edgeEls = {};
+for (const [from, to, lbl] of edges) {
+  const f = nodes[from], t = nodes[to];
+  const mx = (f.x + t.x) / 2, my = (f.y + t.y) / 2;
+  const path = makeSVGEl('path', {
+    d: `M${f.x},${f.y + 16} L${t.x},${t.y - 16}`,
+    class: 'tree-edge',
+    id: `edge_${from}_${to}`
+  });
+  edgeGroup.appendChild(path);
+  const label = makeSVGEl('text', {
+    x: mx, y: my, class: 'edge-label',
+    id: `elbl_${from}_${to}`
+  });
+  label.textContent = lbl;
+  edgeGroup.appendChild(label);
+  edgeEls[`${from}_${to}`] = { path, label };
+}
+
+// draw nodes
+const nodeEls = {};
+const R = 20;
+for (const [id, n] of Object.entries(nodes)) {
+  const g = makeSVGEl('g', { class: 'tree-node', id: `node_${id}` });
+  const isLeaf = n.depth === 3;
+  const rx = isLeaf ? 8 : R;
+  let shapeEl;
+  if (isLeaf) {
+    shapeEl = makeSVGEl('rect', {
+      x: n.x - 28, y: n.y - 14, width: 56, height: 28, rx: 8,
+      fill: 'var(--code-bg)', stroke: 'var(--border)', 'stroke-width': 1.5
+    });
+  } else {
+    shapeEl = makeSVGEl('circle', { cx: n.x, cy: n.y, r: R });
+  }
+  const text = makeSVGEl('text', { x: n.x, y: n.y });
+  text.textContent = isLeaf ? n.label : (n.label === '[ ]' ? '[]' : n.label.replace(/[\[\]]/g,''));
+  g.appendChild(shapeEl);
+  g.appendChild(text);
+  nodeGroup.appendChild(g);
+  nodeEls[id] = { g, shapeEl, text, isLeaf };
+}
+
+// ─────────────────────────────────────────────
+//  状态渲染
+// ─────────────────────────────────────────────
+let currentStep = -1;
+const nodeState = {}; // nodeId -> 'active'|'visited'|'backtracked'|'result'
+
+function renderStep(s) {
+  // 更新 path
+  const pd = document.getElementById('path-display');
+  if (s.path.length === 0) {
+    pd.innerHTML = '<span class="path-empty">[ 空 ]</span>';
+  } else {
+    pd.innerHTML = s.path.map(v =>
+      `<div class="path-box">${v}</div>`).join('');
+  }
+
+  // 更新 used
+  const ud = document.getElementById('used-display');
+  ud.innerHTML = NUMS.map((n, i) => `
+    <div class="used-item">
+      <div class="used-num ${s.used[i] ? 'active' : ''}">${n}</div>
+      <div class="used-label ${s.used[i] ? 'active' : ''}">${s.used[i] ? 'true' : 'false'}</div>
+    </div>`).join('');
+
+  // 更新 log
+  document.getElementById('log-display').innerHTML = s.msg;
+
+  // 更新结果
+  const rd = document.getElementById('results-display');
+  if (s.results.length === 0) {
+    rd.innerHTML = '<span class="path-empty">暂无</span>';
+  } else {
+    rd.innerHTML = s.results.map(r =>
+      `<div class="result-chip">[${r.join(',')}]</div>`).join('');
+  }
+
+  // 代码高亮
+  document.querySelectorAll('.code-line').forEach(el => el.classList.remove('highlight'));
+  if (s.codeLine !== undefined) {
+    const cl = document.getElementById(`cl-${s.codeLine}`);
+    if (cl) cl.classList.add('highlight');
+  }
+
+  // 树节点高亮
+  // 先把上一个 active 改成 visited
+  for (const [id, st] of Object.entries(nodeState)) {
+    if (st === 'active') nodeState[id] = 'visited';
+  }
+
+  if (s.type === 'collect' || s.type === 'choose') {
+    nodeState[s.nodeId] = s.type === 'collect' ? 'result' : 'active';
+  } else if (s.type === 'backtrack') {
+    nodeState[s.nodeId] = 'active';
+    // mark previous active as backtracked styling but keep visited
+  } else if (s.type === 'enter') {
+    nodeState[s.nodeId] = 'active';
+  } else if (s.type === 'skip') {
+    // don't change node state
+  }
+
+  // apply styles
+  for (const [id, nel] of Object.entries(nodeEls)) {
+    const st = nodeState[id] || 'idle';
+    nel.g.className.baseVal = `tree-node ${st !== 'idle' ? st : ''}`;
+    if (nel.isLeaf) {
+      // rects need manual style
+      const fill = st === 'result' ? 'var(--accent3)' :
+                   st === 'active' ? 'var(--accent2)' :
+                   st === 'visited' ? 'var(--surface)' : 'var(--code-bg)';
+      const stroke = st === 'result' ? 'var(--accent3)' :
+                     st === 'active' ? 'var(--accent2)' :
+                     st === 'visited' ? 'var(--accent3)' : 'var(--border)';
+      nel.shapeEl.setAttribute('fill', fill);
+      nel.shapeEl.setAttribute('stroke', stroke);
+      nel.text.setAttribute('fill',
+        (st === 'result' || st === 'active') ? '#0d1117' : 'var(--text)');
+      nel.text.setAttribute('font-weight',
+        (st === 'result' || st === 'active') ? '700' : '400');
+    }
+  }
+
+  // edge highlight: highlight edges on current active path
+  const activePath = s.type === 'backtrack' ? [] : s.path;
+  for (const [from, to] of edges) {
+    const el = edgeEls[`${from}_${to}`];
+    el.path.setAttribute('class', 'tree-edge');
+    // check if this edge is on active path
+    const fromDepth = nodes[from].depth;
+    if (activePath.length > fromDepth) {
+      const expectedTo = 'n_' + activePath.slice(0, fromDepth + 1).join('_');
+      const expectedFrom = fromDepth === 0 ? 'n_root' : 'n_' + activePath.slice(0, fromDepth).join('_');
+      if (from === expectedFrom && to === expectedTo) {
+        el.path.setAttribute('class', 'tree-edge active');
+      }
+    }
+  }
+}
+
+// ─────────────────────────────────────────────
+//  控制逻辑
+// ─────────────────────────────────────────────
+const btnNext  = document.getElementById('btn-next');
+const btnPrev  = document.getElementById('btn-prev');
+const btnReset = document.getElementById('btn-reset');
+const stepCounter = document.getElementById('step-counter');
+
+function updateButtons() {
+  btnPrev.disabled = currentStep <= 0;
+  btnNext.disabled = currentStep >= steps.length - 1;
+  stepCounter.textContent = `步骤 ${Math.max(0, currentStep + 1)} / ${steps.length}`;
+}
+
+// 回放到目标步骤（从头重放，保证 nodeState 正确）
+function replayTo(target) {
+  for (const k of Object.keys(nodeState)) delete nodeState[k];
+  currentStep = -1;
+  for (let i = 0; i <= target; i++) {
+    currentStep = i;
+    // 轻量重放：只更新 nodeState，不刷新 DOM
+    const s = steps[i];
+    for (const [id, st] of Object.entries(nodeState)) {
+      if (st === 'active') nodeState[id] = 'visited';
+    }
+    if (s.type === 'collect')   nodeState[s.nodeId] = 'result';
+    else if (s.type === 'choose')    nodeState[s.nodeId] = 'active';
+    else if (s.type === 'backtrack') nodeState[s.nodeId] = 'active';
+    else if (s.type === 'enter')     nodeState[s.nodeId] = 'active';
+  }
+  renderStep(steps[currentStep]);
+  updateButtons();
+}
+
+function doReset() {
+  currentStep = -1;
+  for (const k of Object.keys(nodeState)) delete nodeState[k];
+  document.getElementById('path-display').innerHTML = '<span class="path-empty">[ 空 ]</span>';
+  document.getElementById('used-display').innerHTML = NUMS.map((n) => `
+    <div class="used-item">
+      <div class="used-num">${n}</div>
+      <div class="used-label">false</div>
+    </div>`).join('');
+  document.getElementById('log-display').innerHTML = '点击「下一步」开始演示…';
+  document.getElementById('results-display').innerHTML = '<span class="path-empty">暂无</span>';
+  document.querySelectorAll('.code-line').forEach(el => el.classList.remove('highlight'));
+  for (const nel of Object.values(nodeEls)) {
+    nel.g.className.baseVal = 'tree-node';
+    if (nel.isLeaf) {
+      nel.shapeEl.setAttribute('fill', 'var(--code-bg)');
+      nel.shapeEl.setAttribute('stroke', 'var(--border)');
+      nel.text.setAttribute('fill', 'var(--text)');
+      nel.text.setAttribute('font-weight', '400');
+    }
+  }
+  for (const el of Object.values(edgeEls)) {
+    el.path.setAttribute('class', 'tree-edge');
+  }
+  updateButtons();
+}
+
+btnNext.addEventListener('click', () => {
+  if (currentStep < steps.length - 1) {
+    currentStep++;
+    // 增量更新 nodeState
+    const s = steps[currentStep];
+    for (const [id, st] of Object.entries(nodeState)) {
+      if (st === 'active') nodeState[id] = 'visited';
+    }
+    if (s.type === 'collect')        nodeState[s.nodeId] = 'result';
+    else if (s.type === 'choose')    nodeState[s.nodeId] = 'active';
+    else if (s.type === 'backtrack') nodeState[s.nodeId] = 'active';
+    else if (s.type === 'enter')     nodeState[s.nodeId] = 'active';
+    renderStep(steps[currentStep]);
+    updateButtons();
+  }
+});
+
+btnPrev.addEventListener('click', () => {
+  if (currentStep > 0) replayTo(currentStep - 1);
+  else if (currentStep === 0) doReset();
+});
+
+btnReset.addEventListener('click', doReset);
+
+// init used display
+document.getElementById('used-display').innerHTML = NUMS.map((n) => `
+  <div class="used-item">
+    <div class="used-num">${n}</div>
+    <div class="used-label">false</div>
+  </div>`).join('');
+
+updateButtons();
+</script>
+</body>
+</html>

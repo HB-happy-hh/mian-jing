@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LRU 缓存 — 哈希表 + 双向链表</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;700;900&display=swap');
+
+  :root {
+    --bg:        #0d1117;
+    --surface:   #161b22;
+    --border:    #30363d;
+    --text:      #e6edf3;
+    --muted:     #7d8590;
+    --accent:    #f78166;
+    --green:     #3fb950;
+    --blue:      #58a6ff;
+    --yellow:    #e3b341;
+    --purple:    #bc8cff;
+    --red:       #ff7b72;
+    --head-color:#3fb950;
+    --tail-color:#f78166;
+    --node-bg:   #1c2128;
+    --node-border:#388bfd;
+    --evict-color:#ff7b72;
+    --new-color:  #3fb950;
+    --move-color: #e3b341;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans SC', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    padding: 60px 40px 40px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  .badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+    background: rgba(247,129,102,0.12);
+    border: 1px solid rgba(247,129,102,0.3);
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 5vw, 52px);
+    font-weight: 900;
+    line-height: 1.1;
+    letter-spacing: -1px;
+  }
+  .hero h1 span { color: var(--blue); }
+  .hero p {
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1.8;
+    max-width: 680px;
+  }
+
+  /* ── LAYOUT ── */
+  .main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 40px 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 48px;
+  }
+
+  /* ── SECTION TITLE ── */
+  .section-title {
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    color: var(--muted);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── CONCEPT CARDS ── */
+  .concept-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 700px) { .concept-grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+  }
+  .card-icon {
+    font-size: 28px;
+    margin-bottom: 12px;
+  }
+  .card h3 {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--blue);
+  }
+  .card p {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.8;
+  }
+  .card code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--yellow);
+    background: rgba(227,179,65,0.08);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  /* ── STRUCT DIAGRAM ── */
+  .struct-diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 28px;
+    overflow-x: auto;
+  }
+  .struct-diagram h3 {
+    font-size: 13px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 24px;
+  }
+  .diagram-row {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    min-width: 600px;
+  }
+  .d-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .d-box {
+    background: var(--node-bg);
+    border: 2px solid var(--node-border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    text-align: center;
+    min-width: 80px;
+    position: relative;
+  }
+  .d-box.head-box { border-color: var(--head-color); }
+  .d-box.tail-box { border-color: var(--tail-color); }
+  .d-box.lru-box  { border-color: var(--evict-color); }
+  .d-label {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .d-arrow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    margin: 0 -2px;
+    z-index: 1;
+  }
+  .arr-fwd, .arr-bwd {
+    font-size: 14px;
+    line-height: 1;
+    color: var(--muted);
+  }
+  .arr-fwd { color: var(--blue); }
+  .arr-bwd { color: var(--purple); }
+
+  /* ── HASHMAP TABLE ── */
+  .map-table {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    border-collapse: collapse;
+    width: 100%;
+  }
+  .map-table th {
+    background: rgba(88,166,255,0.08);
+    color: var(--blue);
+    font-weight: 700;
+    padding: 8px 16px;
+    text-align: left;
+    border: 1px solid var(--border);
+  }
+  .map-table td {
+    padding: 7px 16px;
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  .map-table tr:hover td { background: rgba(255,255,255,0.03); }
+
+  /* ── INTERACTIVE DEMO ── */
+  .demo-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .demo-top {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .demo-top h3 {
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .demo-controls {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .ctrl-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .ctrl-btn:hover { background: rgba(255,255,255,0.06); }
+  .ctrl-btn.active, .ctrl-btn:focus { outline: none; }
+  .ctrl-btn.btn-blue  { border-color: var(--blue);   color: var(--blue); }
+  .ctrl-btn.btn-green { border-color: var(--green);  color: var(--green); }
+  .ctrl-btn.btn-red   { border-color: var(--red);    color: var(--red); }
+  .ctrl-btn.btn-blue:hover  { background: rgba(88,166,255,0.1); }
+  .ctrl-btn.btn-green:hover { background: rgba(63,185,80,0.1); }
+  .ctrl-btn.btn-red:hover   { background: rgba(255,123,114,0.1); }
+
+  /* input row */
+  .input-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .input-row label {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .demo-input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    padding: 5px 10px;
+    width: 64px;
+    text-align: center;
+  }
+  .demo-input:focus { outline: none; border-color: var(--blue); }
+
+  /* ── LINKED LIST VISUAL ── */
+  .demo-body {
+    padding: 28px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  .vis-label {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+  }
+  #list-container {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    min-height: 90px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .vis-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    position: relative;
+    transition: transform .3s ease;
+  }
+  .vis-box {
+    width: 76px;
+    height: 60px;
+    border-radius: 8px;
+    border: 2px solid var(--node-border);
+    background: var(--node-bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    gap: 2px;
+    transition: border-color .3s, background .3s, transform .3s, opacity .3s;
+  }
+  .vis-box .nkey {
+    font-size: 10px;
+    color: var(--muted);
+  }
+  .vis-box .nval {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .vis-box.dummy {
+    border-color: var(--border);
+    background: rgba(255,255,255,0.02);
+    font-size: 10px;
+    color: var(--muted);
+  }
+  .vis-box.highlight-new    { border-color: var(--new-color);   background: rgba(63,185,80,0.12); }
+  .vis-box.highlight-move   { border-color: var(--move-color);  background: rgba(227,179,65,0.12); }
+  .vis-box.highlight-evict  { border-color: var(--evict-color); background: rgba(255,123,114,0.12); }
+  .vis-box.highlight-get    { border-color: var(--blue);        background: rgba(88,166,255,0.12); }
+  .vis-arrow-pair {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0 2px;
+    gap: 2px;
+    margin-top: -18px;
+  }
+  .arr-f { color: var(--blue);   font-size: 13px; line-height: 1; }
+  .arr-b { color: var(--purple); font-size: 13px; line-height: 1; }
+  .node-tag {
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-weight: 700;
+  }
+  .tag-recent { background: rgba(63,185,80,0.15); color: var(--green); }
+  .tag-lru    { background: rgba(255,123,114,0.15); color: var(--red); }
+
+  /* ── LOG ── */
+  #op-log {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-height: 60px;
+    max-height: 180px;
+    overflow-y: auto;
+    padding: 2px 0;
+  }
+  .log-entry {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: fadeIn .2s ease;
+  }
+  .log-entry.log-put   { background: rgba(63,185,80,0.08);  border-left: 3px solid var(--green); }
+  .log-entry.log-get   { background: rgba(88,166,255,0.08); border-left: 3px solid var(--blue); }
+  .log-entry.log-evict { background: rgba(255,123,114,0.08);border-left: 3px solid var(--red); }
+  .log-entry.log-miss  { background: rgba(125,133,144,0.08);border-left: 3px solid var(--muted); }
+  .log-op { font-weight: 700; }
+  .log-msg { color: var(--muted); }
+
+  @keyframes fadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+
+  /* ── HashMap display ── */
+  .hashmap-vis {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-height: 36px;
+    align-items: center;
+  }
+  .hm-entry {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    background: rgba(188,140,255,0.08);
+    border: 1px solid rgba(188,140,255,0.25);
+    border-radius: 6px;
+    padding: 4px 10px;
+    color: var(--purple);
+    transition: all .3s;
+  }
+  .hm-entry.flash-new { background: rgba(63,185,80,0.18); border-color: var(--green); color: var(--green); }
+  .hm-entry.flash-del { background: rgba(255,123,114,0.18); border-color: var(--red); color: var(--red); }
+
+  /* ── ALGO STEPS ── */
+  .steps-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 700px) { .steps-grid { grid-template-columns: 1fr; } }
+
+  .step-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .step-num {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: rgba(88,166,255,0.12);
+    border: 1px solid rgba(88,166,255,0.3);
+    color: var(--blue);
+    font-size: 12px;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 10px;
+  }
+  .step-card h4 { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+  .step-card p  { font-size: 12px; color: var(--muted); line-height: 1.8; }
+  .step-card code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--yellow);
+    background: rgba(227,179,65,0.08);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  /* ── CODE BLOCK ── */
+  .code-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .code-header {
+    padding: 10px 18px;
+    border-bottom: 1px solid var(--border);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot-r { background: #ff5f57; }
+  .dot-y { background: #febc2e; }
+  .dot-g { background: #28c840; }
+  pre {
+    padding: 20px 24px;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    line-height: 1.8;
+    margin: 0;
+  }
+  .kw  { color: var(--red); }
+  .cm  { color: var(--muted); font-style: italic; }
+  .str { color: var(--yellow); }
+  .fn  { color: var(--blue); }
+  .num { color: var(--purple); }
+  .tp  { color: var(--green); }
+
+  /* ── COMPLEXITY ── */
+  .complex-row {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .complex-card {
+    flex: 1;
+    min-width: 160px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+  }
+  .complex-card .big {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--green);
+    margin-bottom: 6px;
+  }
+  .complex-card .sub {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ── CAPACITY SELECTOR ── */
+  .cap-select {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    border-radius: 6px;
+    padding: 5px 10px;
+  }
+  .cap-select:focus { outline: none; border-color: var(--blue); }
+
+  /* ── PRESET STEPS ── */
+  .preset-bar {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,0.01);
+    align-items: center;
+  }
+  .preset-label {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    margin-right: 4px;
+  }
+  .step-pill {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .step-pill:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+  .step-pill.done  { border-color: var(--green); color: var(--green); background: rgba(63,185,80,0.06); }
+  .step-pill.current { border-color: var(--blue); color: var(--blue); background: rgba(88,166,255,0.1); }
+
+  #next-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 8px 22px;
+    border-radius: 8px;
+    border: none;
+    background: var(--blue);
+    color: #0d1117;
+    cursor: pointer;
+    transition: opacity .15s;
+  }
+  #next-btn:hover { opacity: .85; }
+  #next-btn:disabled { opacity: .3; cursor: not-allowed; }
+
+  #reset-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    padding: 7px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all .15s;
+  }
+  #reset-btn:hover { background: rgba(255,255,255,0.05); color: var(--text); }
+</style>
+</head>
+<body>
+
+<!-- ════════════════ HERO ════════════════ -->
+<div class="hero">
+  <div class="badge">LeetCode 146</div>
+  <h1>LRU 缓存<br><span>哈希表 + 双向链表</span></h1>
+  <p>
+    LRU（Least Recently Used，最近最少使用）缓存要求 <code style="font-family:'JetBrains Mono',monospace;color:var(--yellow);font-size:13px;">get</code> 和 <code style="font-family:'JetBrains Mono',monospace;color:var(--yellow);font-size:13px;">put</code> 均在
+    <strong style="color:var(--green)">O(1)</strong> 时间内完成。
+    核心思路：用<strong>哈希表</strong>实现 O(1) 查找，用<strong>双向链表</strong>维护访问顺序，两者合作完成所有操作。
+  </p>
+</div>
+
+<!-- ════════════════ MAIN ════════════════ -->
+<div class="main">
+
+  <!-- §1 为什么需要两种数据结构 -->
+  <section>
+    <div class="section-title">01 — 核心思路</div>
+    <div class="concept-grid">
+      <div class="card">
+        <div class="card-icon">🗂️</div>
+        <h3>HashMap &nbsp;→&nbsp; O(1) 查找</h3>
+        <p>
+          <code>key → Node</code> 直接定位节点地址。<br>
+          没有哈希表，链表查找是 O(n)，无法满足题目要求。
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-icon">⛓️</div>
+        <h3>双向链表 → O(1) 移动 / 删除</h3>
+        <p>
+          节点持有 <code>prev</code> 和 <code>next</code> 指针，<br>
+          可在 O(1) 完成<strong>摘除</strong>和<strong>插入到头部</strong>，无需遍历。
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔗</div>
+        <h3>虚拟头尾节点 → 消除边界判断</h3>
+        <p>
+          链表两端各有一个哨兵节点 <code>head</code>（dummy）和 <code>tail</code>（dummy），<br>
+          永远不为空，省去 null 判断，代码更简洁。
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-icon">📌</div>
+        <h3>顺序约定 → 头=最近，尾=最久</h3>
+        <p>
+          每次访问/写入，把对应节点移到 <code>head.next</code>；<br>
+          容量满时，淘汰 <code>tail.prev</code>（最久未使用）。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- §2 数据结构示意 -->
+  <section>
+    <div class="section-title">02 — 数据结构示意</div>
+    <div class="struct-diagram">
+      <h3>// 容量=3，已存 3 个元素（3 最近，2 最久）</h3>
+      <div class="diagram-row">
+        <div class="d-node">
+          <div class="d-box head-box" style="color:var(--head-color)">HEAD<br><span style="font-size:10px;color:var(--muted)">dummy</span></div>
+          <div class="d-label" style="color:var(--head-color)">最近端</div>
+        </div>
+        <div class="d-arrow"><span class="arr-fwd">→</span><span class="arr-bwd">←</span></div>
+        <div class="d-node">
+          <div class="d-box">k=3<br>v=3</div>
+          <div class="node-tag tag-recent">最近</div>
+        </div>
+        <div class="d-arrow"><span class="arr-fwd">→</span><span class="arr-bwd">←</span></div>
+        <div class="d-node">
+          <div class="d-box">k=1<br>v=1</div>
+          <div class="d-label" style="color:transparent">.</div>
+        </div>
+        <div class="d-arrow"><span class="arr-fwd">→</span><span class="arr-bwd">←</span></div>
+        <div class="d-node">
+          <div class="d-box lru-box">k=2<br>v=2</div>
+          <div class="node-tag tag-lru">最久（LRU）</div>
+        </div>
+        <div class="d-arrow"><span class="arr-fwd">→</span><span class="arr-bwd">←</span></div>
+        <div class="d-node">
+          <div class="d-box tail-box" style="color:var(--tail-color)">TAIL<br><span style="font-size:10px;color:var(--muted)">dummy</span></div>
+          <div class="d-label" style="color:var(--tail-color)">最久端</div>
+        </div>
+      </div>
+
+      <div style="margin-top:24px;display:flex;flex-wrap:wrap;gap:16px;">
+        <div style="flex:1;min-width:220px;">
+          <div class="vis-label">HashMap（key → Node 地址）</div>
+          <table class="map-table">
+            <thead><tr><th>key</th><th>→ Node</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td style="color:var(--muted)">Node(k=1, v=1)</td></tr>
+              <tr><td>2</td><td style="color:var(--muted)">Node(k=2, v=2)</td></tr>
+              <tr><td>3</td><td style="color:var(--muted)">Node(k=3, v=3)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="flex:1;min-width:220px;">
+          <div class="vis-label">指针操作复杂度</div>
+          <table class="map-table">
+            <thead><tr><th>操作</th><th>时间</th></tr></thead>
+            <tbody>
+              <tr><td>map.get(key)</td><td style="color:var(--green)">O(1)</td></tr>
+              <tr><td>addToHead(node)</td><td style="color:var(--green)">O(1)</td></tr>
+              <tr><td>removeNode(node)</td><td style="color:var(--green)">O(1)</td></tr>
+              <tr><td>moveToHead(node)</td><td style="color:var(--green)">O(1)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- §3 交互演示 -->
+  <section>
+    <div class="section-title">03 — 交互演示</div>
+    <div class="demo-panel">
+      <!-- 演示顶栏 -->
+      <div class="demo-top">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <h3>实时演示</h3>
+          <label style="font-size:12px;color:var(--muted);font-family:'JetBrains Mono',monospace;">
+            容量:&nbsp;
+            <select class="cap-select" id="cap-select">
+              <option value="2">2</option>
+              <option value="3" selected>3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+            </select>
+          </label>
+        </div>
+        <div class="demo-controls">
+          <!-- custom op -->
+          <div class="input-row">
+            <label>key</label>
+            <input class="demo-input" id="in-key" type="number" value="1" min="0" max="99">
+            <label>val</label>
+            <input class="demo-input" id="in-val" type="number" value="10" min="0" max="99">
+            <button class="ctrl-btn btn-green" onclick="doPut()">put</button>
+            <button class="ctrl-btn btn-blue"  onclick="doGet()">get</button>
+          </div>
+          <button id="reset-btn" onclick="resetDemo()">↺ reset</button>
+        </div>
+      </div>
+
+      <!-- preset steps (LeetCode example) -->
+      <div class="preset-bar">
+        <span class="preset-label">示例步骤 (cap=2):</span>
+        <button class="step-pill" id="pill-0" onclick="runPreset(0)">put(1,1)</button>
+        <button class="step-pill" id="pill-1" onclick="runPreset(1)">put(2,2)</button>
+        <button class="step-pill" id="pill-2" onclick="runPreset(2)">get(1)</button>
+        <button class="step-pill" id="pill-3" onclick="runPreset(3)">put(3,3)</button>
+        <button class="step-pill" id="pill-4" onclick="runPreset(4)">get(2)</button>
+        <button class="step-pill" id="pill-5" onclick="runPreset(5)">put(4,4)</button>
+        <button class="step-pill" id="pill-6" onclick="runPreset(6)">get(1)</button>
+        <button class="step-pill" id="pill-7" onclick="runPreset(7)">get(3)</button>
+        <button class="step-pill" id="pill-8" onclick="runPreset(8)">get(4)</button>
+        <button id="next-btn" onclick="runNextPreset()">▶ 下一步</button>
+      </div>
+
+      <div class="demo-body">
+        <!-- linked list -->
+        <div>
+          <div class="vis-label">// 双向链表（左=最近，右=最久）</div>
+          <div id="list-container"></div>
+        </div>
+        <!-- hashmap -->
+        <div>
+          <div class="vis-label">// HashMap { key → Node }</div>
+          <div class="hashmap-vis" id="hm-vis"></div>
+        </div>
+        <!-- log -->
+        <div>
+          <div class="vis-label">// 操作日志</div>
+          <div id="op-log"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- §4 算法步骤详解 -->
+  <section>
+    <div class="section-title">04 — 算法步骤</div>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-num">G</div>
+        <h4 style="color:var(--blue)">get(key)</h4>
+        <p>
+          ① 查 HashMap：未命中 → 返回 <code>-1</code>。<br>
+          ② 命中 → <code>moveToHead(node)</code>（先摘后插头）。<br>
+          ③ 返回 <code>node.val</code>。
+        </p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">P</div>
+        <h4 style="color:var(--green)">put(key, value)</h4>
+        <p>
+          ① key 已存在 → 更新 val，<code>moveToHead</code>。<br>
+          ② key 不存在 → 创建新节点，<code>addToHead</code>，<code>map.put</code>。<br>
+          ③ 若 <code>size &gt; capacity</code> → 删 <code>tail.prev</code>，<code>map.remove</code>。
+        </p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">+</div>
+        <h4 style="color:var(--yellow)">addToHead(node)</h4>
+        <p>
+          将节点插到 <code>head.next</code> 位置（最近端）：<br>
+          <code>node.prev = head</code><br>
+          <code>node.next = head.next</code><br>
+          <code>head.next.prev = node</code><br>
+          <code>head.next = node</code>
+        </p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">−</div>
+        <h4 style="color:var(--red)">removeNode(node)</h4>
+        <p>
+          从链表中摘除节点（不销毁），绕过它：<br>
+          <code>node.prev.next = node.next</code><br>
+          <code>node.next.prev = node.prev</code><br>
+          双向指针使得无需从头遍历，直接 O(1)。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- §5 核心代码 -->
+  <section>
+    <div class="section-title">05 — 核心代码（Java）</div>
+    <div class="code-block">
+      <div class="code-header">
+        <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+        &nbsp; LRUCache.java
+      </div>
+      <pre><span class="kw">class</span> <span class="tp">LRUCache</span> {
+    <span class="kw">private static class</span> <span class="tp">Node</span> {
+        <span class="tp">int</span> key, val;
+        <span class="tp">Node</span> prev, next;
+        <span class="tp">Node</span>(<span class="tp">int</span> key, <span class="tp">int</span> val) { <span class="kw">this</span>.key = key; <span class="kw">this</span>.val = val; }
+    }
+
+    <span class="kw">private final int</span> capacity;
+    <span class="kw">private final</span> <span class="tp">Map</span>&lt;<span class="tp">Integer</span>, <span class="tp">Node</span>&gt; map = <span class="kw">new</span> <span class="tp">HashMap</span>&lt;&gt;();
+    <span class="kw">private final</span> <span class="tp">Node</span> head = <span class="kw">new</span> <span class="tp">Node</span>(<span class="num">0</span>,<span class="num">0</span>), tail = <span class="kw">new</span> <span class="tp">Node</span>(<span class="num">0</span>,<span class="num">0</span>);
+
+    <span class="fn">LRUCache</span>(<span class="tp">int</span> capacity) {
+        <span class="kw">this</span>.capacity = capacity;
+        head.next = tail; tail.prev = head;   <span class="cm">// 虚拟节点互联</span>
+    }
+
+    <span class="kw">public int</span> <span class="fn">get</span>(<span class="tp">int</span> key) {
+        <span class="tp">Node</span> node = map.<span class="fn">get</span>(key);
+        <span class="kw">if</span> (node == <span class="kw">null</span>) <span class="kw">return</span> -<span class="num">1</span>;
+        <span class="fn">moveToHead</span>(node);    <span class="cm">// 访问 → 移到最近端</span>
+        <span class="kw">return</span> node.val;
+    }
+
+    <span class="kw">public void</span> <span class="fn">put</span>(<span class="tp">int</span> key, <span class="tp">int</span> value) {
+        <span class="tp">Node</span> node = map.<span class="fn">get</span>(key);
+        <span class="kw">if</span> (node != <span class="kw">null</span>) {
+            node.val = value;
+            <span class="fn">moveToHead</span>(node);
+        } <span class="kw">else</span> {
+            <span class="tp">Node</span> n = <span class="kw">new</span> <span class="tp">Node</span>(key, value);
+            map.<span class="fn">put</span>(key, n);
+            <span class="fn">addToHead</span>(n);
+            <span class="kw">if</span> (map.size() > capacity) {
+                <span class="tp">Node</span> lru = tail.prev;       <span class="cm">// 最久未用</span>
+                <span class="fn">removeNode</span>(lru);
+                map.<span class="fn">remove</span>(lru.key);
+            }
+        }
+    }
+
+    <span class="kw">private void</span> <span class="fn">addToHead</span>(<span class="tp">Node</span> node) {
+        node.prev = head;  node.next = head.next;
+        head.next.prev = node;  head.next = node;
+    }
+
+    <span class="kw">private void</span> <span class="fn">removeNode</span>(<span class="tp">Node</span> node) {
+        node.prev.next = node.next;
+        node.next.prev = node.prev;
+    }
+
+    <span class="kw">private void</span> <span class="fn">moveToHead</span>(<span class="tp">Node</span> node) {
+        <span class="fn">removeNode</span>(node);  <span class="fn">addToHead</span>(node);
+    }
+}</pre>
+    </div>
+  </section>
+
+  <!-- §6 复杂度 -->
+  <section>
+    <div class="section-title">06 — 复杂度分析</div>
+    <div class="complex-row">
+      <div class="complex-card">
+        <div class="big">O(1)</div>
+        <div class="sub">get 时间复杂度<br>哈希定位 + 常数次指针操作</div>
+      </div>
+      <div class="complex-card">
+        <div class="big">O(1)</div>
+        <div class="sub">put 时间复杂度<br>哈希写入 + 常数次指针操作</div>
+      </div>
+      <div class="complex-card">
+        <div class="big">O(n)</div>
+        <div class="sub">空间复杂度<br>n = capacity，链表+哈希表</div>
+      </div>
+    </div>
+  </section>
+
+</div><!-- /main -->
+
+<script>
+// ══════════════════════════════════════════════════════
+//  LRU Cache 运行时（JS 复刻）
+// ══════════════════════════════════════════════════════
+
+class Node {
+  constructor(key, val) {
+    this.key = key; this.val = val;
+    this.prev = null; this.next = null;
+  }
+}
+
+class LRUCache {
+  constructor(cap) {
+    this.capacity = cap;
+    this.map = new Map();
+    this.head = new Node(0, 0);
+    this.tail = new Node(0, 0);
+    this.head.next = this.tail;
+    this.tail.prev = this.head;
+  }
+  get(key) {
+    const node = this.map.get(key);
+    if (!node) return -1;
+    this._moveToHead(node);
+    return node.val;
+  }
+  put(key, value) {
+    let node = this.map.get(key);
+    let evicted = null;
+    let isNew = false;
+    if (node) {
+      node.val = value;
+      this._moveToHead(node);
+    } else {
+      node = new Node(key, value);
+      this.map.set(key, node);
+      this._addToHead(node);
+      isNew = true;
+      if (this.map.size > this.capacity) {
+        const lru = this.tail.prev;
+        this._removeNode(lru);
+        this.map.delete(lru.key);
+        evicted = lru.key;
+      }
+    }
+    return { isNew, evicted };
+  }
+  _addToHead(node) {
+    node.prev = this.head; node.next = this.head.next;
+    this.head.next.prev = node; this.head.next = node;
+  }
+  _removeNode(node) {
+    node.prev.next = node.next; node.next.prev = node.prev;
+  }
+  _moveToHead(node) { this._removeNode(node); this._addToHead(node); }
+  toArray() {
+    const arr = [];
+    let cur = this.head.next;
+    while (cur !== this.tail) { arr.push({key: cur.key, val: cur.val}); cur = cur.next; }
+    return arr;
+  }
+}
+
+// ── State ──
+let cache = new LRUCache(3);
+let presetStep = 0;
+
+const PRESET = [
+  // [op, key, val]  cap=2
+  ['cap', 2],
+  ['put', 1, 1],
+  ['put', 2, 2],
+  ['get', 1],
+  ['put', 3, 3],
+  ['get', 2],
+  ['put', 4, 4],
+  ['get', 1],
+  ['get', 3],
+  ['get', 4],
+];
+
+// ── DOM helpers ──
+const listEl = document.getElementById('list-container');
+const hmEl   = document.getElementById('hm-vis');
+const logEl  = document.getElementById('op-log');
+
+function renderList(highlight) {
+  // highlight: { key, type } type= 'new'|'move'|'evict'|'get'
+  listEl.innerHTML = '';
+  const arr = cache.toArray();
+
+  const frag = document.createDocumentFragment();
+
+  // HEAD dummy
+  frag.appendChild(makeDummy('HEAD'));
+  frag.appendChild(makeArrow());
+
+  arr.forEach((n, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'vis-node';
+
+    const box = document.createElement('div');
+    box.className = 'vis-box';
+    if (highlight && highlight.key === n.key) {
+      box.classList.add('highlight-' + highlight.type);
+    }
+
+    const kspan = document.createElement('span');
+    kspan.className = 'nkey'; kspan.textContent = `k=${n.key}`;
+    const vspan = document.createElement('span');
+    vspan.className = 'nval'; vspan.textContent = n.val;
+    box.appendChild(kspan); box.appendChild(vspan);
+
+    const tag = document.createElement('div');
+    tag.className = 'node-tag';
+    if (i === 0) { tag.classList.add('tag-recent'); tag.textContent = '最近'; }
+    else if (i === arr.length - 1) { tag.classList.add('tag-lru'); tag.textContent = 'LRU'; }
+    else { tag.style.visibility = 'hidden'; tag.textContent = '.'; }
+
+    wrap.appendChild(box);
+    wrap.appendChild(tag);
+    frag.appendChild(wrap);
+    if (i < arr.length - 1) frag.appendChild(makeArrow());
+  });
+
+  if (arr.length > 0) frag.appendChild(makeArrow());
+  frag.appendChild(makeDummy('TAIL'));
+
+  listEl.appendChild(frag);
+}
+
+function makeDummy(label) {
+  const wrap = document.createElement('div');
+  wrap.className = 'vis-node';
+  const box = document.createElement('div');
+  box.className = 'vis-box dummy';
+  box.textContent = label;
+  const tag = document.createElement('div');
+  tag.className = 'node-tag';
+  tag.style.visibility = 'hidden'; tag.textContent = '.';
+  wrap.appendChild(box); wrap.appendChild(tag);
+  return wrap;
+}
+
+function makeArrow() {
+  const d = document.createElement('div');
+  d.className = 'vis-arrow-pair';
+  d.innerHTML = '<span class="arr-f">→</span><span class="arr-b">←</span>';
+  return d;
+}
+
+function renderHashMap(flashKey, flashType) {
+  hmEl.innerHTML = '';
+  cache.map.forEach((node, key) => {
+    const span = document.createElement('span');
+    span.className = 'hm-entry';
+    span.textContent = `${key} → Node(${node.val})`;
+    if (flashKey === key) span.classList.add('flash-' + flashType);
+    hmEl.appendChild(span);
+  });
+  if (cache.map.size === 0) {
+    hmEl.innerHTML = '<span style="font-family:\'JetBrains Mono\',monospace;font-size:12px;color:var(--muted)">{ }</span>';
+  }
+}
+
+function addLog(type, msg) {
+  const entry = document.createElement('div');
+  entry.className = `log-entry log-${type}`;
+  const opEl = document.createElement('span');
+  opEl.className = 'log-op';
+  const opMap = { put:'PUT', get:'GET', evict:'EVICT', miss:'MISS' };
+  opEl.style.color = {put:'var(--green)',get:'var(--blue)',evict:'var(--red)',miss:'var(--muted)'}[type];
+  opEl.textContent = opMap[type] || type.toUpperCase();
+  const msgEl = document.createElement('span');
+  msgEl.className = 'log-msg';
+  msgEl.textContent = msg;
+  entry.appendChild(opEl); entry.appendChild(msgEl);
+  logEl.prepend(entry);
+  // keep last 20
+  while (logEl.children.length > 20) logEl.removeChild(logEl.lastChild);
+}
+
+// ── Operations ──
+function doPut() {
+  const key = parseInt(document.getElementById('in-key').value);
+  const val = parseInt(document.getElementById('in-val').value);
+  if (isNaN(key) || isNaN(val)) return;
+  const existed = cache.map.has(key);
+  const { isNew, evicted } = cache.put(key, val);
+  renderList({ key, type: existed ? 'move' : 'new' });
+  renderHashMap(key, 'new');
+  addLog('put', `  key=${key}, val=${val}${existed ? ' (updated)' : ' (new)'}`)
+  if (evicted !== null) {
+    addLog('evict', `  key=${evicted} 被淘汰（容量超出 ${cache.capacity}）`);
+  }
+  setTimeout(() => { renderList(); renderHashMap(); }, 1000);
+}
+
+function doGet() {
+  const key = parseInt(document.getElementById('in-key').value);
+  if (isNaN(key)) return;
+  const result = cache.get(key);
+  if (result === -1) {
+    renderList();
+    addLog('miss', `  get(${key}) → -1（不存在或已淘汰）`);
+  } else {
+    renderList({ key, type: 'get' });
+    addLog('get', `  get(${key}) → ${result}，节点移到最近端`);
+    setTimeout(() => renderList(), 1000);
+  }
+  renderHashMap();
+}
+
+function resetDemo() {
+  const cap = parseInt(document.getElementById('cap-select').value);
+  cache = new LRUCache(cap);
+  presetStep = 0;
+  updatePills();
+  logEl.innerHTML = '';
+  renderList();
+  renderHashMap();
+}
+
+document.getElementById('cap-select').addEventListener('change', resetDemo);
+
+// ── Preset ──
+const PRESET_OPS = [
+  {op:'put', key:1, val:1},
+  {op:'put', key:2, val:2},
+  {op:'get', key:1},
+  {op:'put', key:3, val:3},
+  {op:'get', key:2},
+  {op:'put', key:4, val:4},
+  {op:'get', key:1},
+  {op:'get', key:3},
+  {op:'get', key:4},
+];
+
+function updatePills() {
+  for (let i = 0; i < 9; i++) {
+    const p = document.getElementById('pill-' + i);
+    p.classList.remove('done', 'current');
+    if (i < presetStep) p.classList.add('done');
+    else if (i === presetStep) p.classList.add('current');
+  }
+  document.getElementById('next-btn').disabled = (presetStep >= PRESET_OPS.length);
+}
+
+function runPreset(idx) {
+  // set cap to 2 if needed
+  if (idx === 0 && presetStep > idx) {
+    // reset
+    document.getElementById('cap-select').value = '2';
+    cache = new LRUCache(2);
+    presetStep = 0;
+    logEl.innerHTML = '';
+  }
+  if (cache.capacity !== 2) {
+    document.getElementById('cap-select').value = '2';
+    cache = new LRUCache(2);
+    presetStep = 0;
+    logEl.innerHTML = '';
+  }
+  // run all steps up to and including idx
+  while (presetStep <= idx) {
+    _runPresetStep(presetStep);
+    presetStep++;
+  }
+  updatePills();
+}
+
+function runNextPreset() {
+  if (presetStep === 0) {
+    document.getElementById('cap-select').value = '2';
+    cache = new LRUCache(2);
+    logEl.innerHTML = '';
+  }
+  if (cache.capacity !== 2 && presetStep > 0) {
+    document.getElementById('cap-select').value = '2';
+    cache = new LRUCache(2);
+    presetStep = 0;
+    logEl.innerHTML = '';
+  }
+  if (presetStep >= PRESET_OPS.length) return;
+  _runPresetStep(presetStep);
+  presetStep++;
+  updatePills();
+}
+
+function _runPresetStep(idx) {
+  const step = PRESET_OPS[idx];
+  if (step.op === 'put') {
+    const existed = cache.map.has(step.key);
+    const { evicted } = cache.put(step.key, step.val);
+    renderList({ key: step.key, type: existed ? 'move' : 'new' });
+    renderHashMap(step.key, 'new');
+    addLog('put', `  put(${step.key}, ${step.val})${existed ? ' — 更新已有 key' : ' — 新插入'}`);
+    if (evicted !== null) {
+      addLog('evict', `  key=${evicted} 被淘汰（超出容量 ${cache.capacity}）`);
+    }
+    setTimeout(() => { renderList(); renderHashMap(); }, 900);
+  } else {
+    const result = cache.get(step.key);
+    if (result === -1) {
+      renderList();
+      addLog('miss', `  get(${step.key}) → -1（已淘汰或不存在）`);
+    } else {
+      renderList({ key: step.key, type: 'get' });
+      addLog('get', `  get(${step.key}) → ${result}，节点移至最近端`);
+      setTimeout(() => renderList(), 900);
+    }
+    renderHashMap();
+  }
+}
+
+// ── Init ──
+renderList();
+renderHashMap();
+updatePills();
+</script>
+</body>
+</html>

@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>300. 最长递增子序列 — 贪心 + 二分图解</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Serif+SC:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117; --surface: #161b22; --surface2: #21262d;
+    --border: #30363d; --accent: #f78166; --accent2: #79c0ff;
+    --accent3: #56d364; --accent4: #e3b341; --text: #e6edf3; --muted: #8b949e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Noto Serif SC', serif; line-height: 1.7; padding: 32px 20px 60px; }
+  .container { max-width: 980px; margin: 0 auto; }
+
+  .header { display: flex; align-items: baseline; gap: 14px; margin-bottom: 6px; }
+  .num { font-size: 13px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+  h1 { font-size: 28px; font-weight: 900; letter-spacing: -1px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 12px; background: #3d2b00; color: var(--accent4); border: 1px solid #6a4700; }
+  .sub { color: var(--accent2); font-size: 14px; font-family: 'JetBrains Mono', monospace; margin-left: 8px; }
+  .desc { color: var(--muted); margin: 10px 0 28px; font-size: 15px; }
+
+  .section-title { font-size: 17px; font-weight: 700; margin: 32px 0 14px; display: flex; align-items: center; gap: 10px; }
+  .section-title::before { content: ''; display: inline-block; width: 4px; height: 17px; background: var(--accent); border-radius: 2px; }
+
+  .idea-box {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px 22px;
+    font-size: 15px; margin-bottom: 10px;
+  }
+  .idea-box strong { color: var(--accent4); }
+  .idea-box code { font-family: 'JetBrains Mono', monospace; font-size: 13px; background: #1c2128; padding: 1px 6px; border-radius: 4px; color: var(--accent); }
+
+  /* ── viz ── */
+  .viz-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
+  .input-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+  .input-row label { font-size: 13px; color: var(--muted); }
+  input[type=text] { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 7px 12px; width: 300px; }
+  input[type=text]:focus { outline: none; border-color: var(--accent2); }
+  .examples { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .ex-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-size: 12px; padding: 5px 11px; border-radius: 6px; cursor: pointer; font-family: 'JetBrains Mono', monospace; transition: all .2s; }
+  .ex-btn:hover { border-color: var(--accent4); color: var(--accent4); }
+  .controls { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .btn { font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 8px 18px; border-radius: 6px; cursor: pointer; border: none; transition: all .2s; }
+  .btn-primary { background: var(--accent2); color: #000; font-weight: 700; }
+  .btn-primary:hover { background: #a8d8ff; }
+  .btn-secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--accent2); color: var(--accent2); }
+  .btn-danger { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+  .btn-danger:hover { background: var(--accent); color: #000; }
+
+  .progress-bar { height: 4px; background: var(--surface2); border-radius: 2px; margin: 10px 0; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent2), var(--accent3)); border-radius: 2px; transition: width .3s; }
+
+  /* ── main stage ── */
+  .stage { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 20px; min-height: 220px; }
+
+  .row-label { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .cells { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+  .cell {
+    width: 54px; height: 54px; border-radius: 8px; border: 2px solid var(--border);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace; transition: all .35s;
+    position: relative;
+  }
+  .cell .idx { font-size: 10px; color: var(--muted); }
+  .cell .val { font-size: 18px; font-weight: 700; }
+  .cell.c-normal  { background: var(--surface); }
+  .cell.c-current { background: #1a2e4a; border-color: var(--accent2); }
+  .cell.c-past    { background: #0d2010; border-color: #2d6a3a; }
+  .cell.c-done    { background: #0d2010; border-color: var(--accent3); }
+
+  /* tails cells */
+  .cell.t-normal  { background: var(--surface); border-color: var(--border); }
+  .cell.t-active  { background: #1a2e4a; border-color: var(--accent2); }
+  .cell.t-replace { background: #2e1a00; border-color: var(--accent4); animation: pulse .4s; }
+  .cell.t-append  { background: #0d2e1a; border-color: var(--accent3); animation: pulse .4s; }
+  .cell.t-empty   { background: transparent; border: 2px dashed #30363d; }
+  .cell.t-search  { border-color: #d2a8ff; animation: blink .5s 3; }
+
+  @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.12)} }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  /* pointer under tails */
+  .tails-row { display: flex; gap: 6px; align-items: flex-start; flex-wrap: wrap; }
+  .tails-cell-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .ptr { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #d2a8ff; height: 16px; }
+
+  .step-log {
+    margin-top: 14px; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 16px; min-height: 80px; max-height: 180px;
+    font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.9;
+    color: var(--muted); overflow-y: auto;
+  }
+  .step-log .hi  { color: var(--accent3); }
+  .step-log .wi  { color: var(--accent); }
+  .step-log .inf { color: var(--accent2); }
+  .step-log .pu  { color: #d2a8ff; }
+  .anim-status { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted); margin-top: 6px; text-align: right; }
+
+  /* code */
+  .code-wrap { background: #0d1117; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-top: 8px; }
+  .code-header { background: var(--surface2); padding: 10px 16px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; align-items: center; }
+  .copy-btn { background: transparent; border: 1px solid var(--border); color: var(--muted); font-size: 12px; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-family: 'JetBrains Mono', monospace; }
+  .copy-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+  pre { padding: 20px; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 13.5px; line-height: 1.75; }
+  .kw{color:#ff7b72} .ty{color:#ffa657} .cm{color:#8b949e;font-style:italic} .nu{color:#79c0ff} .fn{color:#d2a8ff} .op{color:#ff7b72}
+
+  table.cmp { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  table.cmp th, table.cmp td { padding: 10px 16px; text-align: left; border: 1px solid var(--border); font-size: 14px; }
+  table.cmp th { background: var(--surface2); color: var(--accent2); font-weight: 700; }
+  table.cmp td:first-child { font-family: 'JetBrains Mono', monospace; color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <span class="num">LeetCode #300</span>
+    <h1>最长递增子序列</h1>
+    <span class="badge">中等</span>
+    <span class="sub">方法二：贪心 + 二分查找</span>
+  </div>
+  <p class="desc">在 O(n log n) 时间内求解，核心是维护一个「最优末尾」数组 tails，保证每种长度的子序列末尾值尽可能小。</p>
+
+  <div class="section-title">贪心核心思想</div>
+  <div class="idea-box">
+    维护数组 <code>tails</code>，其中 <code>tails[i]</code> 表示<strong>长度为 i+1 的所有递增子序列中，末尾元素的最小值</strong>。<br><br>
+    <strong>为什么要让末尾尽量小？</strong>末尾越小，后面来的新数字越容易比它大，从而接在后面让子序列变长。这就是「贪心」的含义。<br><br>
+    对每个新数字 <code>num</code>，二分查找 <code>tails</code> 中第一个 <strong>≥ num</strong> 的位置 <code>lo</code>，然后令 <code>tails[lo] = num</code>：
+    <ul style="margin-top:8px;margin-left:20px;font-size:14px;">
+      <li style="margin-bottom:4px"><code>lo == tails 长度</code> → num 比所有末尾都大，<strong>追加</strong>，LIS 长度 +1</li>
+      <li><code>lo &lt; tails 长度</code> → <strong>替换</strong> tails[lo]，让长度为 lo+1 的子序列末尾变得更小</li>
+    </ul>
+  </div>
+
+  <div class="section-title">交互演示</div>
+  <div class="viz-card">
+    <div class="input-row">
+      <label>输入数组：</label>
+      <input type="text" id="inputField" value="10,9,2,5,3,7,101,18">
+    </div>
+    <div class="examples">
+      <button class="ex-btn" onclick="loadEx('10,9,2,5,3,7,101,18')">示例1</button>
+      <button class="ex-btn" onclick="loadEx('0,1,0,3,2,3')">示例2</button>
+      <button class="ex-btn" onclick="loadEx('7,7,7,7,7,7,7')">全相等</button>
+      <button class="ex-btn" onclick="loadEx('3,1,2,4')">经典错误案例</button>
+      <button class="ex-btn" onclick="loadEx('1,3,6,7,9,4,10,5,6')">综合</button>
+    </div>
+    <div class="controls">
+      <button class="btn btn-primary" onclick="startAnim()">▶ 开始演示</button>
+      <button class="btn btn-secondary" onclick="stepFwd()">下一步</button>
+      <button class="btn btn-danger" onclick="resetViz()">↺ 重置</button>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progFill" style="width:0%"></div></div>
+
+    <div class="stage" id="stage">
+      <div style="color:var(--muted);font-size:13px;font-family:'JetBrains Mono',monospace">点击「开始演示」后，动画将在这里展示…</div>
+    </div>
+    <div class="anim-status" id="animStatus">步骤 0 / 0</div>
+    <div class="step-log" id="stepLog">点击「开始演示」查看每步的操作…</div>
+  </div>
+
+  <div class="section-title">Java 代码</div>
+  <div class="code-wrap">
+    <div class="code-header">
+      <span>Solution.java — 贪心 + 二分  O(n log n)</span>
+      <button class="copy-btn" onclick="copyCode()">复制</button>
+    </div>
+    <pre><span class="kw">class</span> Solution {
+    <span class="kw">public int</span> <span class="fn">lengthOfLIS</span>(<span class="kw">int</span>[] nums) {
+        <span class="cm">// tails[i] = 长度为 i+1 的递增子序列的最小末尾值</span>
+        <span class="kw">int</span>[] tails = <span class="kw">new int</span>[nums.length];
+        <span class="kw">int</span> len = <span class="nu">0</span>;   <span class="cm">// tails 的有效长度，即当前 LIS 长度</span>
+
+        <span class="kw">for</span> (<span class="kw">int</span> num : nums) {
+            <span class="cm">// 二分查找：在 tails[0..len-1] 中找第一个 >= num 的位置</span>
+            <span class="kw">int</span> lo = <span class="nu">0</span>, hi = len;
+            <span class="kw">while</span> (lo &lt; hi) {
+                <span class="kw">int</span> mid = (lo + hi) / <span class="nu">2</span>;
+                <span class="kw">if</span> (tails[mid] &lt; num) lo = mid + <span class="nu">1</span>;
+                <span class="kw">else</span>                  hi = mid;
+            }
+
+            <span class="cm">// 替换（让那个长度的末尾值更小）或追加（LIS 变长）</span>
+            tails[lo] = num;
+            <span class="kw">if</span> (lo == len) len++;
+        }
+
+        <span class="kw">return</span> len;
+    }
+}</pre>
+  </div>
+
+  <div class="section-title">二分查找的目标：找第一个 ≥ num 的位置</div>
+  <div class="idea-box">
+    <strong>为什么找 ≥ 而不是 &gt;？</strong><br>
+    严格递增要求不能有相等元素。若 <code>num == tails[lo]</code>，用 num 替换 tails[lo] 不改变值但保持正确性；
+    若找 <code>&gt;</code>，相等时会追加，导致 tails 中出现重复，破坏严格递增的语义。
+  </div>
+
+  <div class="section-title">与 DP 方案对比</div>
+  <table class="cmp">
+    <tr><th></th><th>动态规划</th><th>贪心 + 二分</th></tr>
+    <tr><td>时间</td><td>O(n²)</td><td>O(n log n)</td></tr>
+    <tr><td>空间</td><td>O(n)</td><td>O(n)</td></tr>
+    <tr><td>能还原实际子序列</td><td>可以</td><td>需额外记录</td></tr>
+    <tr><td>理解难度</td><td>低</td><td>中（需理解 tails 含义）</td></tr>
+  </table>
+
+</div>
+
+<script>
+// ── build steps ──────────────────────────────────────
+function parseInput(s) {
+  return s.trim().split(/[,\s]+/).map(Number).filter(x => !isNaN(x));
+}
+function loadEx(v) { document.getElementById('inputField').value = v; resetViz(); }
+
+function buildSteps(nums) {
+  const st = [];
+  const tails = [];
+  let len = 0;
+
+  st.push({ type: 'init', nums: [...nums], tails: [], len: 0, cur: -1, lo: -1, op: '' });
+
+  for (let ni = 0; ni < nums.length; ni++) {
+    const num = nums[ni];
+
+    // binary search
+    let lo = 0, hi = len;
+    // record search states
+    st.push({ type: 'bs_start', nums: [...nums], tails: tails.slice(0, len), len, cur: ni, lo, hi, num, op: `开始处理 num=${num}，在 tails[0..${len-1}] 中二分查找第一个 ≥ ${num} 的位置` });
+
+    while (lo < hi) {
+      const mid = Math.floor((lo + hi) / 2);
+      const cond = tails[mid] < num;
+      st.push({ type: 'bs_mid', nums: [...nums], tails: tails.slice(0, len), len, cur: ni, lo, hi, mid, num, cond, op: `mid=${mid}，tails[${mid}]=${tails[mid]} ${cond ? '<' : '>='} ${num}，${cond ? 'lo=mid+1' : 'hi=mid'}` });
+      if (cond) lo = mid + 1;
+      else      hi = mid;
+    }
+
+    // apply
+    const isAppend = lo === len;
+    tails[lo] = num;
+    if (isAppend) len++;
+
+    st.push({
+      type: isAppend ? 'append' : 'replace',
+      nums: [...nums], tails: tails.slice(0, len), len, cur: ni, lo, num,
+      op: isAppend
+        ? `num=${num} 比所有末尾都大 → 追加到 tails[${lo}]，LIS 长度变为 ${len}`
+        : `num=${num} 替换 tails[${lo}]，长度为 ${lo+1} 的子序列末尾从旧值变为 ${num}`
+    });
+  }
+
+  st.push({ type: 'done', nums: [...nums], tails: tails.slice(0, len), len, cur: -1, lo: -1, op: `完成！LIS 长度 = ${len}` });
+  return st;
+}
+
+// ── render ───────────────────────────────────────────
+function renderStage(s) {
+  const { nums, tails, len, cur, lo, type, mid } = s;
+  const maxSlots = Math.max(nums.length, 1);
+  let html = '';
+
+  // nums row
+  html += '<div class="row-label">原数组 nums</div><div class="cells">';
+  nums.forEach((v, i) => {
+    let cls = i < cur ? 'c-past' : i === cur ? 'c-current' : 'c-normal';
+    if (type === 'done') cls = 'c-done';
+    html += `<div class="cell ${cls}"><span class="idx">[${i}]</span><span class="val">${v}</span></div>`;
+  });
+  html += '</div>';
+
+  // tails row
+  html += '<div class="row-label" style="margin-top:4px">tails（各长度的最小末尾）</div><div class="tails-row">';
+  for (let i = 0; i < maxSlots; i++) {
+    const inUse = i < len;
+    let cls = inUse ? 't-normal' : 't-empty';
+    let ptr = '';
+    if (inUse) {
+      if (type === 'append' && i === lo) cls = 't-append';
+      else if (type === 'replace' && i === lo) cls = 't-replace';
+      else if ((type === 'bs_start' || type === 'bs_mid') && i === lo) cls = 't-search';
+      else if (type === 'bs_mid' && i === mid) { cls = 't-search'; ptr = '↑ mid'; }
+    }
+    if ((type === 'bs_start' || type === 'bs_mid') && i === lo) ptr = '↑ lo';
+    const valStr = inUse ? tails[i] : '';
+    html += `<div class="tails-cell-wrap">
+      <div class="cell ${cls}">
+        <span class="idx">[${i}]</span>
+        <span class="val">${valStr}</span>
+      </div>
+      <div class="ptr">${ptr}</div>
+    </div>`;
+  }
+  html += '</div>';
+
+  // legend
+  html += `<div style="margin-top:12px;display:flex;gap:16px;flex-wrap:wrap;font-family:'JetBrains Mono',monospace;font-size:12px">
+    <span style="color:var(--accent2)">■ 当前处理</span>
+    <span style="color:var(--accent3)">■ 追加（LIS变长）</span>
+    <span style="color:var(--accent4)">■ 替换（末尾变小）</span>
+    <span style="color:#d2a8ff">■ 二分搜索位置</span>
+    <span style="color:#2d6a3a">■ 已处理</span>
+  </div>`;
+
+  document.getElementById('stage').innerHTML = html;
+}
+
+// ── animation engine ─────────────────────────────────
+let steps = [], stepIdx = 0, timer = null;
+
+function resetViz() {
+  clearInterval(timer);
+  steps = []; stepIdx = 0;
+  document.getElementById('progFill').style.width = '0%';
+  document.getElementById('animStatus').textContent = '步骤 0 / 0';
+  document.getElementById('stepLog').innerHTML = '点击「开始演示」查看每步的操作…';
+  document.getElementById('stage').innerHTML = '<div style="color:var(--muted);font-size:13px;font-family:\'JetBrains Mono\',monospace">点击「开始演示」后，动画将在这里展示…</div>';
+}
+
+function applyStep(idx) {
+  if (idx >= steps.length) return;
+  const s = steps[idx];
+  const total = steps.length - 1;
+  document.getElementById('progFill').style.width = `${(idx / Math.max(total, 1)) * 100}%`;
+  document.getElementById('animStatus').textContent = `步骤 ${idx} / ${total}`;
+  renderStage(s);
+
+  const log = document.getElementById('stepLog');
+  let cls = 'inf';
+  if (s.type === 'append') cls = 'hi';
+  else if (s.type === 'replace') cls = 'wi';
+  else if (s.type === 'done') cls = 'hi';
+  else if (s.type === 'bs_mid') cls = 'pu';
+
+  if (s.type === 'init') {
+    log.innerHTML = `<span class="inf">► 初始化：tails = []，len = 0</span>`;
+  } else {
+    log.innerHTML += `<br><span class="${cls}">${s.op}</span>`;
+  }
+  if (s.type === 'done') {
+    log.innerHTML += `<br><span class="hi">   tails = [${s.tails.join(', ')}]（注意：tails 不一定是真实的 LIS，只保证长度正确）</span>`;
+  }
+  log.scrollTop = log.scrollHeight;
+  stepIdx = idx + 1;
+}
+
+function startAnim() {
+  const nums = parseInput(document.getElementById('inputField').value);
+  if (!nums.length) return;
+  resetViz();
+  steps = buildSteps(nums);
+  document.getElementById('stepLog').innerHTML = '';
+  let i = 0;
+  timer = setInterval(() => {
+    if (i >= steps.length) { clearInterval(timer); return; }
+    applyStep(i++);
+  }, 700);
+}
+
+function stepFwd() {
+  const nums = parseInput(document.getElementById('inputField').value);
+  if (!nums.length) return;
+  if (!steps.length) { steps = buildSteps(nums); document.getElementById('stepLog').innerHTML = ''; }
+  if (stepIdx < steps.length) applyStep(stepIdx);
+}
+
+function copyCode() {
+  const code = `class Solution {
+    public int lengthOfLIS(int[] nums) {
+        // tails[i] = 长度为 i+1 的递增子序列的最小末尾值
+        int[] tails = new int[nums.length];
+        int len = 0;   // tails 的有效长度，即当前 LIS 长度
+
+        for (int num : nums) {
+            // 二分查找：在 tails[0..len-1] 中找第一个 >= num 的位置
+            int lo = 0, hi = len;
+            while (lo < hi) {
+                int mid = (lo + hi) / 2;
+                if (tails[mid] < num) lo = mid + 1;
+                else                  hi = mid;
+            }
+
+            // 替换（让那个长度的末尾值更小）或追加（LIS 变长）
+            tails[lo] = num;
+            if (lo == len) len++;
+        }
+
+        return len;
+    }
+}`;
+  navigator.clipboard.writeText(code).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = '已复制 ✓';
+    setTimeout(() => btn.textContent = '复制', 2000);
+  });
+}
+</script>
+</body>
+</html>

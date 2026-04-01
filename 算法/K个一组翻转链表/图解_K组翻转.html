@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>K 个一组翻转链表 · 图解</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Sans+SC:wght@300;400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --border: #21262d;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --red: #f85149;
+    --yellow: #d29922;
+    --purple: #bc8cff;
+    --orange: #ffa657;
+    --teal: #39d0d8;
+    --text: #c9d1d9;
+    --muted: #484f58;
+    --dim: #30363d;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans SC', sans-serif;
+    min-height: 100vh;
+  }
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(88,166,255,.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(88,166,255,.025) 1px, transparent 1px);
+    background-size: 36px 36px;
+    pointer-events: none; z-index: 0;
+  }
+
+  .wrap { position: relative; z-index: 1; max-width: 980px; margin: 0 auto; padding: 40px 20px 80px; }
+
+  /* ── Hero ── */
+  .hero { text-align: center; margin-bottom: 44px; }
+  .lc-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: #f8514922; border: 1px solid #f8514944;
+    border-radius: 8px; padding: 4px 14px;
+    font-size: 12px; color: var(--red); margin-bottom: 16px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .hero h1 {
+    font-size: clamp(24px, 4vw, 42px); font-weight: 900;
+    background: linear-gradient(135deg, #f85149, #ffa657, #bc8cff);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text; margin-bottom: 10px;
+  }
+  .hero p { color: var(--muted); font-size: 14px; }
+
+  /* ── Card ── */
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 18px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-title::before { content:''; width:3px; height:14px; background:var(--accent); border-radius:2px; display:block; }
+
+  /* ── Controls ── */
+  .ctrl-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .ctrl-group { display: flex; flex-direction: column; gap: 6px; }
+  .ctrl-label { font-size: 11px; color: var(--muted); letter-spacing: 1px; }
+  input[type=text], input[type=number] {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 14px;
+    color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 14px;
+    outline: none; transition: border-color .2s;
+  }
+  input[type=text] { width: 240px; }
+  input[type=number] { width: 70px; }
+  input:focus { border-color: var(--accent); }
+  .btn {
+    padding: 9px 20px; border-radius: 8px; border: none; cursor: pointer;
+    font-family: 'Noto Sans SC', sans-serif; font-size: 13px; font-weight: 700;
+    transition: all .15s; letter-spacing: .5px;
+  }
+  .btn-primary { background: var(--accent); color: #0d1117; }
+  .btn-primary:hover { background: #79b8ff; transform: translateY(-1px); }
+  .btn-secondary { background: var(--dim); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: #3d444d; }
+  .btn-go { background: linear-gradient(135deg, #f85149, #ffa657); color: #0d1117; }
+  .btn-go:hover { opacity: .9; transform: translateY(-1px); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; transform: none !important; }
+
+  /* ── Linked List Canvas ── */
+  #list-canvas {
+    width: 100%; min-height: 130px;
+    overflow-x: auto; overflow-y: visible;
+    padding: 10px 0 20px;
+  }
+  .list-row {
+    display: flex; align-items: center; gap: 0;
+    min-width: max-content; padding: 10px 4px;
+  }
+
+  /* Node */
+  .node {
+    display: flex; flex-direction: column; align-items: center;
+    position: relative;
+  }
+  .node-box {
+    width: 54px; height: 54px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700;
+    border: 2px solid; transition: all .35s ease;
+    position: relative; z-index: 2;
+  }
+  .node-label {
+    font-size: 10px; margin-top: 6px; font-family: 'JetBrains Mono', monospace;
+    color: var(--muted); letter-spacing: 1px; transition: color .3s;
+  }
+
+  /* Node states */
+  .node-default  { background: #1c2128; border-color: #30363d; color: var(--text); }
+  .node-group    { background: #58a6ff1a; border-color: var(--accent); color: var(--accent); }
+  .node-reversing{ background: #ffa6571a; border-color: var(--orange); color: var(--orange); }
+  .node-done     { background: #3fb9501a; border-color: var(--green); color: var(--green); }
+  .node-remain   { background: #bc8cff1a; border-color: var(--purple); color: var(--purple); }
+  .node-dummy    { background: transparent; border-color: var(--muted); border-style: dashed; color: var(--muted); font-size: 11px; }
+  .node-prev     { background: #d299221a; border-color: var(--yellow); color: var(--yellow); }
+
+  /* Arrow between nodes */
+  .arrow {
+    display: flex; align-items: center; margin: 0 2px;
+    margin-bottom: 28px; /* align with node center */
+    transition: all .35s ease;
+  }
+  .arrow svg { width: 36px; height: 20px; }
+  .arrow-rev svg { transform: scaleX(-1); }
+  .arrow line { stroke: var(--muted); stroke-width: 2; marker-end: url(#arrowhead); transition: stroke .35s; }
+  .arrow-active line { stroke: var(--orange); }
+  .arrow-done line   { stroke: var(--green); }
+  .arrow-null { opacity: 0; }
+
+  /* ── Step log ── */
+  #step-log {
+    font-family: 'JetBrains Mono', monospace; font-size: 13px;
+    line-height: 1.9; color: var(--text);
+    min-height: 50px;
+  }
+  .log-line { display: flex; align-items: baseline; gap: 10px; animation: fadeIn .3s ease; }
+  .log-step { color: var(--muted); font-size: 11px; min-width: 24px; }
+  .log-msg  { flex: 1; }
+  .log-info  { color: var(--accent); }
+  .log-warn  { color: var(--orange); }
+  .log-ok    { color: var(--green); }
+  .log-done  { color: var(--purple); }
+
+  /* ── Progress bar ── */
+  .progress-wrap { height: 4px; background: var(--dim); border-radius: 4px; margin-bottom: 18px; overflow: hidden; }
+  .progress-bar  { height: 100%; background: linear-gradient(90deg, var(--accent), var(--purple)); border-radius: 4px; transition: width .4s ease; }
+
+  /* ── Step nav ── */
+  .step-nav { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .step-info { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted); margin-left: auto; }
+
+  /* ── Legend ── */
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 14px; }
+  .legend-item { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); }
+  .legend-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid; flex-shrink: 0; }
+
+  /* ── Code block ── */
+  .code-wrap {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 10px; padding: 20px; overflow-x: auto;
+  }
+  pre { font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.8; }
+  .kw  { color: #ff7b72; }
+  .cm  { color: #8b949e; font-style: italic; }
+  .fn  { color: #d2a8ff; }
+  .va  { color: #79c0ff; }
+  .nu  { color: #f2cc60; }
+  .st  { color: #a5d6ff; }
+
+  /* ── Result ── */
+  .result-box {
+    display: none; background: #3fb95010; border: 1px solid var(--green);
+    border-radius: 10px; padding: 14px 20px; margin-top: 14px;
+    font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--green);
+  }
+  .result-box.show { display: block; animation: fadeIn .4s ease; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+  .pulse { animation: pulse .5s ease; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="lc-badge">⚡ LeetCode 25 · 困难</div>
+    <h1>K 个一组翻转链表</h1>
+    <p>虚拟头节点 · 分组定位 · 原地翻转 · 重新拼接</p>
+  </div>
+
+  <!-- Controls -->
+  <div class="card">
+    <div class="card-title">输入参数</div>
+    <div class="ctrl-row">
+      <div class="ctrl-group">
+        <div class="ctrl-label">链表节点值（逗号分隔）</div>
+        <input type="text" id="input-list" value="1,2,3,4,5" placeholder="1,2,3,4,5">
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">k 值</div>
+        <input type="number" id="input-k" value="2" min="1" max="20">
+      </div>
+      <div class="ctrl-group" style="justify-content:flex-end; padding-top:18px;">
+        <button class="btn btn-go" onclick="initSteps()">生成步骤</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Visualization -->
+  <div class="card">
+    <div class="card-title">链表状态</div>
+    <div id="list-canvas"><div class="list-row" id="list-row"></div></div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="border-color:#30363d;background:#1c2128"></div>默认</div>
+      <div class="legend-item"><div class="legend-dot" style="border-color:var(--accent);background:#58a6ff1a"></div>当前组</div>
+      <div class="legend-item"><div class="legend-dot" style="border-color:var(--orange);background:#ffa6571a"></div>翻转中</div>
+      <div class="legend-item"><div class="legend-dot" style="border-color:var(--green);background:#3fb9501a"></div>已完成</div>
+      <div class="legend-item"><div class="legend-dot" style="border-color:var(--purple);background:#bc8cff1a"></div>剩余不翻转</div>
+      <div class="legend-item"><div class="legend-dot" style="border-color:var(--yellow);background:#d299221a"></div>prevTail</div>
+    </div>
+  </div>
+
+  <!-- Step Nav -->
+  <div class="card">
+    <div class="card-title">分步控制</div>
+    <div class="progress-wrap"><div class="progress-bar" id="progress-bar" style="width:0%"></div></div>
+    <div class="step-nav">
+      <button class="btn btn-secondary" id="btn-prev" onclick="prevStep()" disabled>← 上一步</button>
+      <button class="btn btn-primary"   id="btn-next" onclick="nextStep()" disabled>下一步 →</button>
+      <button class="btn btn-secondary" id="btn-auto" onclick="toggleAuto()">▶ 自动播放</button>
+      <div class="step-info" id="step-info">步骤 0 / 0</div>
+    </div>
+    <div style="margin-top:20px">
+      <div id="step-log"></div>
+    </div>
+    <div class="result-box" id="result-box"></div>
+  </div>
+
+  <!-- Code -->
+  <div class="card">
+    <div class="card-title">核心代码</div>
+    <div class="code-wrap"><pre id="code-block"></pre></div>
+  </div>
+
+</div>
+
+<!-- SVG defs (arrowheads) -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#484f58"/>
+    </marker>
+    <marker id="arrowhead-active" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#ffa657"/>
+    </marker>
+    <marker id="arrowhead-done" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#3fb950"/>
+    </marker>
+  </defs>
+</svg>
+
+<script>
+// ═══════════════════════════════════════════════
+// Data model: simulate the algorithm step by step
+// ═══════════════════════════════════════════════
+
+let steps = [];
+let currentStep = 0;
+let autoTimer = null;
+
+function parseInput() {
+  const raw = document.getElementById('input-list').value;
+  const vals = raw.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+  const k = Math.max(1, parseInt(document.getElementById('input-k').value) || 2);
+  return { vals, k };
+}
+
+// Build steps by simulating the algorithm
+// nodes[] is indexed by node *identity* (0=dummy, 1..n=original positions)
+// listNodes[] is the current logical order: listNodes[pos] = node identity at that position
+// Each snap stores a copy of listNodes so renderList knows the display order
+function buildSteps(vals, k) {
+  const steps = [];
+  const n = vals.length;
+
+  // node identity → { val, state }
+  let nodes = [{ val: 'D', state: 'dummy' }];
+  for (let v of vals) nodes.push({ val: v, state: 'default' });
+
+  // listNodes[0] = dummy identity (0), listNodes[1..n] = node identities in current order
+  let listNodes = Array.from({ length: n + 1 }, (_, i) => i);
+
+  // Snapshot: capture the current display order + each node's state
+  const snap = (msg, cls, highlightPos = null) => {
+    steps.push({
+      order: [...listNodes],                    // position → node identity
+      states: nodes.map(nd => nd.state),        // node identity → state
+      vals:   nodes.map(nd => nd.val),          // node identity → val
+      msg, cls,
+      highlightPos  // position index (in listNodes) to pulse
+    });
+  };
+
+  snap(`开始：链表共 ${n} 个节点，k = ${k}`, 'log-info');
+
+  let groupNum = 0;
+  let pos = 1; // current group start position (1-based inside listNodes)
+
+  while (pos <= n) {
+    // ── Not enough nodes for a full group ──
+    if (pos + k - 1 > n) {
+      snap(`位置 ${pos}：剩余 ${n - pos + 1} 个节点，不足 k=${k}，保持原顺序`, 'log-warn');
+      for (let i = pos; i <= n; i++) nodes[listNodes[i]].state = 'remain';
+      snap(`剩余节点（紫色）不翻转`, 'log-warn');
+      break;
+    }
+
+    groupNum++;
+    const groupStart = pos;
+    const groupEnd   = pos + k - 1;
+
+    // ── Step 1: highlight prevTail ──
+    const prevId = listNodes[pos - 1];
+    nodes[prevId].state = (nodes[prevId].val === 'D') ? 'dummy' : 'prev';
+    snap(`第 ${groupNum} 组：prevTail 定位（黄色），接下来取 k=${k} 个节点`, 'log-info', pos - 1);
+
+    // ── Step 2: highlight group ──
+    for (let i = groupStart; i <= groupEnd; i++) nodes[listNodes[i]].state = 'group';
+    const groupVals = listNodes.slice(groupStart, groupEnd + 1).map(id => nodes[id].val);
+    snap(`第 ${groupNum} 组：[${groupVals.join(', ')}] 标蓝，准备翻转`, 'log-info');
+
+    // ── Step 3: mark reversing ──
+    for (let i = groupStart; i <= groupEnd; i++) nodes[listNodes[i]].state = 'reversing';
+    snap(`翻转第 ${groupNum} 组指针…`, 'log-warn');
+
+    // ── Actually reverse segment in listNodes (this changes display order!) ──
+    const seg = listNodes.slice(groupStart, groupEnd + 1);
+    seg.reverse();
+    for (let i = 0; i < seg.length; i++) listNodes[groupStart + i] = seg[i];
+
+    // ── Step 4: mark done, show new order ──
+    for (let i = groupStart; i <= groupEnd; i++) nodes[listNodes[i]].state = 'done';
+    // prevTail (already passed) also done
+    if (nodes[prevId].val !== 'D') nodes[prevId].state = 'done';
+    const doneVals = seg.map(id => nodes[id].val);
+    snap(`第 ${groupNum} 组翻转完成 → [${doneVals.join(' → ')}]`, 'log-ok');
+
+    pos = groupEnd + 1;
+  }
+
+  // Finalise any leftover states
+  for (let i = 1; i <= n; i++) {
+    const s = nodes[listNodes[i]].state;
+    if (s === 'group' || s === 'reversing' || s === 'default') nodes[listNodes[i]].state = 'done';
+  }
+
+  const resultVals = listNodes.slice(1).map(id => nodes[id].val);
+  snap(`✅ 全部完成！结果：[${resultVals.join(', ')}]`, 'log-done');
+
+  return { steps, resultVals };
+}
+
+let _resultVals = [];
+
+function initSteps() {
+  const { vals, k } = parseInput();
+  if (vals.length === 0) return;
+
+  stopAuto();
+  currentStep = 0;
+
+  const built = buildSteps(vals, k);
+  steps = built.steps;
+  _resultVals = built.resultVals;
+
+  document.getElementById('btn-next').disabled = false;
+  document.getElementById('btn-prev').disabled = true;
+  document.getElementById('btn-auto').disabled = false;
+  document.getElementById('result-box').classList.remove('show');
+
+  renderStep(0);
+  updateNav();
+}
+
+function renderStep(idx) {
+  if (idx < 0 || idx >= steps.length) return;
+  const step = steps[idx];
+
+  renderList(step);
+
+  // Append log line
+  const log = document.getElementById('step-log');
+  if (idx === 0) log.innerHTML = '';
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.innerHTML = `<span class="log-step">${String(idx + 1).padStart(2,'0')}.</span><span class="log-msg ${step.cls}">${step.msg}</span>`;
+  log.appendChild(line);
+  log.scrollTop = log.scrollHeight;
+
+  // Progress
+  const pct = steps.length <= 1 ? 100 : (idx / (steps.length - 1)) * 100;
+  document.getElementById('progress-bar').style.width = pct + '%';
+
+  // Result on last step
+  if (idx === steps.length - 1) {
+    const rb = document.getElementById('result-box');
+    rb.textContent = '输出：[' + _resultVals.join(', ') + ']';
+    rb.classList.add('show');
+  }
+}
+
+// Render nodes in the current logical order (step.order = listNodes snapshot)
+function renderList(step) {
+  const row = document.getElementById('list-row');
+  row.innerHTML = '';
+
+  const { order, states, vals, highlightPos } = step;
+
+  order.forEach((nodeId, pos) => {
+    const nodeWrap = document.createElement('div');
+    nodeWrap.className = 'node';
+    if (highlightPos === pos) nodeWrap.classList.add('pulse');
+
+    const box = document.createElement('div');
+    box.className = `node-box node-${states[nodeId]}`;
+    box.textContent = vals[nodeId];
+
+    const label = document.createElement('div');
+    label.className = 'node-label';
+    label.textContent = pos === 0 ? 'dummy' : `[${pos - 1}]`;
+
+    nodeWrap.appendChild(box);
+    nodeWrap.appendChild(label);
+    row.appendChild(nodeWrap);
+
+    // Arrow between nodes (not after the last one)
+    if (pos < order.length - 1) {
+      const arrowWrap = document.createElement('div');
+      arrowWrap.className = 'arrow';
+
+      // Color the arrow based on the state of the node it originates from
+      const st = states[nodeId];
+      let stroke = '#484f58', marker = 'arrowhead';
+      if (st === 'done')      { stroke = '#3fb950'; marker = 'arrowhead-done'; }
+      if (st === 'reversing') { stroke = '#ffa657'; marker = 'arrowhead-active'; }
+
+      arrowWrap.innerHTML = `
+        <svg viewBox="0 0 36 20" xmlns="http://www.w3.org/2000/svg">
+          <line x1="2" y1="10" x2="28" y2="10" stroke="${stroke}" stroke-width="2"
+            marker-end="url(#${marker})"/>
+        </svg>`;
+      row.appendChild(arrowWrap);
+    }
+  });
+}
+
+function nextStep() {
+  if (currentStep < steps.length - 1) {
+    currentStep++;
+    renderStep(currentStep);
+    updateNav();
+  }
+}
+
+function prevStep() {
+  if (currentStep > 0) {
+    currentStep--;
+    // Rebuild log from scratch
+    const log = document.getElementById('step-log');
+    log.innerHTML = '';
+    document.getElementById('result-box').classList.remove('show');
+    for (let i = 0; i <= currentStep; i++) renderStep(i);
+    updateNav();
+  }
+}
+
+function updateNav() {
+  document.getElementById('btn-prev').disabled = currentStep <= 0;
+  document.getElementById('btn-next').disabled = currentStep >= steps.length - 1;
+  document.getElementById('step-info').textContent = `步骤 ${currentStep + 1} / ${steps.length}`;
+}
+
+let autoRunning = false;
+function toggleAuto() {
+  if (autoRunning) { stopAuto(); return; }
+  autoRunning = true;
+  document.getElementById('btn-auto').textContent = '⏸ 暂停';
+  autoTimer = setInterval(() => {
+    if (currentStep >= steps.length - 1) { stopAuto(); return; }
+    nextStep();
+  }, 900);
+}
+function stopAuto() {
+  autoRunning = false;
+  clearInterval(autoTimer);
+  document.getElementById('btn-auto').textContent = '▶ 自动播放';
+}
+
+// ── Code highlighting ──
+document.getElementById('code-block').innerHTML = `<span class="kw">public</span> ListNode <span class="fn">reverseKGroup</span>(ListNode <span class="va">head</span>, <span class="kw">int</span> <span class="va">k</span>) {
+    ListNode <span class="va">dummy</span> = <span class="kw">new</span> ListNode(<span class="nu">0</span>);
+    <span class="va">dummy</span>.next = <span class="va">head</span>;
+    ListNode <span class="va">prevTail</span> = <span class="va">dummy</span>;      <span class="cm">// 上一组的尾节点</span>
+
+    <span class="kw">while</span> (<span class="kw">true</span>) {
+        <span class="cm">// 1. 找到本组第 k 个节点</span>
+        ListNode <span class="va">kth</span> = <span class="fn">getKth</span>(<span class="va">prevTail</span>, <span class="va">k</span>);
+        <span class="kw">if</span> (<span class="va">kth</span> == <span class="kw">null</span>) <span class="kw">break</span>;   <span class="cm">// 不足 k 个，结束</span>
+
+        ListNode <span class="va">groupHead</span> = <span class="va">prevTail</span>.next;   <span class="cm">// 本组头</span>
+        ListNode <span class="va">nextGroup</span> = <span class="va">kth</span>.next;        <span class="cm">// 下一组头</span>
+
+        <span class="cm">// 2. 断开并翻转本组</span>
+        <span class="va">kth</span>.next = <span class="kw">null</span>;
+        <span class="va">prevTail</span>.next = <span class="fn">reverse</span>(<span class="va">groupHead</span>);
+
+        <span class="cm">// 3. 组尾接下一组</span>
+        <span class="va">groupHead</span>.next = <span class="va">nextGroup</span>;
+
+        <span class="cm">// 4. 前进 prevTail</span>
+        <span class="va">prevTail</span> = <span class="va">groupHead</span>;
+    }
+    <span class="kw">return</span> <span class="va">dummy</span>.next;
+}
+
+<span class="kw">private</span> ListNode <span class="fn">getKth</span>(ListNode <span class="va">node</span>, <span class="kw">int</span> <span class="va">k</span>) {
+    <span class="kw">while</span> (<span class="va">node</span> != <span class="kw">null</span> &amp;&amp; <span class="va">k</span> > <span class="nu">0</span>) { <span class="va">node</span> = <span class="va">node</span>.next; <span class="va">k</span>--; }
+    <span class="kw">return</span> <span class="va">node</span>;
+}
+
+<span class="kw">private</span> ListNode <span class="fn">reverse</span>(ListNode <span class="va">head</span>) {
+    ListNode <span class="va">prev</span> = <span class="kw">null</span>, <span class="va">curr</span> = <span class="va">head</span>;
+    <span class="kw">while</span> (<span class="va">curr</span> != <span class="kw">null</span>) {
+        ListNode <span class="va">next</span> = <span class="va">curr</span>.next;
+        <span class="va">curr</span>.next = <span class="va">prev</span>;
+        <span class="va">prev</span> = <span class="va">curr</span>;
+        <span class="va">curr</span> = <span class="va">next</span>;
+    }
+    <span class="kw">return</span> <span class="va">prev</span>;
+}`;
+
+// Auto-init on load
+window.addEventListener('load', initSteps);
+</script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 class LongestCommonSubsequence {
-    public int longestCommonSubsequence(String text1, String text2) {
+    public static int longestCommonSubsequence(String text1, String text2) {
         int m = text1.length();
         int n = text2.length();
 
@@ -26,15 +26,18 @@ class LongestCommonSubsequence {
     }
 
     public static void main(String[] args) {
-        LongestCommonSubsequence sol = new LongestCommonSubsequence();
+        // LongestCommonSubsequence sol = new LongestCommonSubsequence();
 
         // 示例1：text1="abcde", text2="ace"  →  3（公共子序列 "ace"）
-        System.out.println("示例1: " + sol.longestCommonSubsequence("abcde", "ace"));
+        String a = "abfjsik";
+        String b = "abfjiewinvdsn";
+        System.out.println(longestCommonSubsequence(a, b));
+        System.out.println("示例1: " + longestCommonSubsequence("abcde", "ace"));
 
         // 示例2：text1="abc", text2="abc"  →  3（公共子序列 "abc"）
-        System.out.println("示例2: " + sol.longestCommonSubsequence("abc", "abc"));
+        System.out.println("示例2: " + longestCommonSubsequence("abc", "abc"));
 
         // 示例3：text1="abc", text2="def"  →  0（无公共子序列）
-        System.out.println("示例3: " + sol.longestCommonSubsequence("abc", "def"));
+        System.out.println("示例3: " + longestCommonSubsequence("abc", "def"));
     }
 }

@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>LNDS 可视化</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Sans+SC:wght@400;700;900&display=swap');
+
+  :root {
+    --bg: #0f0f1a;
+    --card: #1a1a2e;
+    --border: #2a2a4a;
+    --accent-a: #00d4ff;
+    --accent-b: #ff6b9d;
+    --accent-merge: #7cfc00;
+    --accent-gold: #ffd700;
+    --text: #e0e0f0;
+    --muted: #888aaa;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans SC', sans-serif;
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 900;
+    letter-spacing: 0.05em;
+    margin-bottom: 6px;
+    background: linear-gradient(90deg, var(--accent-a), var(--accent-b));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .subtitle {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin-bottom: 24px;
+  }
+
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+
+  .panel-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    min-width: 180px;
+  }
+
+  .input-group label { font-size: 0.8rem; color: var(--muted); }
+  .input-group label span { font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+  .seq-a-label span { color: var(--accent-a); }
+  .seq-b-label span { color: var(--accent-b); }
+
+  input[type=text] {
+    background: #0f0f1a;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1rem;
+    padding: 10px 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input[type=text]:focus { border-color: var(--accent-a); }
+
+  button {
+    background: linear-gradient(135deg, var(--accent-a), #0080ff);
+    border: none;
+    border-radius: 8px;
+    color: #000;
+    cursor: pointer;
+    font-family: 'Noto Sans SC', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    padding: 10px 24px;
+    transition: opacity 0.2s, transform 0.1s;
+    white-space: nowrap;
+  }
+  button:hover { opacity: 0.85; }
+  button:active { transform: scale(0.97); }
+
+  .array-visual {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+    align-items: center;
+    min-height: 68px;
+  }
+
+  .cell {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.1rem;
+    font-weight: 700;
+    border: 2px solid transparent;
+    transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .cell-idx {
+    font-size: 0.55rem;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .cell-a { background: rgba(0,212,255,0.08); border-color: rgba(0,212,255,0.25); color: var(--accent-a); }
+  .cell-a.hl { background: rgba(0,212,255,0.28); border-color: var(--accent-a); transform: translateY(-6px) scale(1.1); box-shadow: 0 6px 20px rgba(0,212,255,0.35); }
+
+  .cell-b { background: rgba(255,107,157,0.08); border-color: rgba(255,107,157,0.25); color: var(--accent-b); }
+  .cell-b.hl { background: rgba(255,107,157,0.28); border-color: var(--accent-b); transform: translateY(-6px) scale(1.1); box-shadow: 0 6px 20px rgba(255,107,157,0.35); }
+
+  .cell-m { background: rgba(124,252,0,0.08); border-color: rgba(124,252,0,0.25); color: var(--accent-merge); }
+  .cell-m.hl { background: rgba(124,252,0,0.25); border-color: var(--accent-merge); transform: translateY(-4px); box-shadow: 0 4px 16px rgba(124,252,0,0.3); }
+
+  .steps-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  @media (max-width: 700px) { .steps-grid { grid-template-columns: 1fr 1fr; } }
+
+  .step-card {
+    background: #12122a;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    opacity: 0.35;
+    transition: all 0.4s;
+  }
+  .step-card.active { opacity: 1; border-color: var(--accent-gold); box-shadow: 0 0 14px rgba(255,215,0,0.2); }
+  .step-card.done { opacity: 0.75; border-color: var(--border); }
+
+  .step-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--accent-gold); color: #000;
+    font-size: 0.72rem; font-weight: 900; margin-bottom: 8px;
+  }
+  .step-title { font-size: 0.82rem; font-weight: 700; margin-bottom: 4px; }
+  .step-desc { font-size: 0.73rem; color: var(--muted); line-height: 1.5; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 600px) { .two-col { grid-template-columns: 1fr; } }
+
+  .sub-label { font-size: 0.8rem; color: var(--muted); margin-bottom: 6px; }
+
+  .dp-wrap { overflow-x: auto; margin-top: 10px; }
+  table { border-collapse: collapse; font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; white-space: nowrap; }
+  th, td { border: 1px solid var(--border); padding: 5px 10px; text-align: center; }
+  th { background: #1a1a3a; color: var(--muted); font-size: 0.68rem; }
+  td.hi { background: rgba(255,215,0,0.18); color: var(--accent-gold); font-weight: 700; }
+  td.append-cell { color: var(--accent-merge); }
+  td.replace-cell { color: var(--accent-b); }
+
+  .algo-log {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    line-height: 1.8;
+    color: var(--muted);
+    margin-top: 10px;
+  }
+  .algo-log .hx { color: var(--accent-gold); font-weight: 700; }
+  .algo-log .ha { color: var(--accent-a); }
+  .algo-log .hb { color: var(--accent-b); }
+  .algo-log .hg { color: var(--accent-merge); }
+
+  .merge-row {
+    display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+    margin-top: 10px; min-height: 60px;
+  }
+
+  .tag {
+    font-size: 0.6rem; padding: 1px 5px; border-radius: 3px;
+    font-family: 'JetBrains Mono', monospace; margin-top: 2px;
+  }
+  .tag-a { background: rgba(0,212,255,0.2); color: var(--accent-a); }
+  .tag-b { background: rgba(255,107,157,0.2); color: var(--accent-b); }
+
+  .leq { color: var(--muted); font-size: 1rem; margin: 0 2px; }
+
+  .result-box {
+    background: linear-gradient(135deg, rgba(0,212,255,0.08), rgba(255,107,157,0.08));
+    border: 1px solid rgba(255,215,0,0.4);
+    border-radius: 10px;
+    padding: 20px 24px;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;
+  }
+  .result-formula { font-family: 'JetBrains Mono', monospace; font-size: 1rem; line-height: 2.2; }
+  .result-formula .va { color: var(--accent-a); font-weight: 700; }
+  .result-formula .vb { color: var(--accent-b); font-weight: 700; }
+  .result-formula .vr { color: var(--accent-gold); font-weight: 900; font-size: 1.4rem; }
+  .result-big { font-size: 4rem; font-weight: 900; color: var(--accent-gold); font-family: 'JetBrains Mono', monospace; text-shadow: 0 0 30px rgba(255,215,0,0.5); }
+
+  .proof-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 10px; }
+  @media (max-width: 600px) { .proof-row { grid-template-columns: 1fr; } }
+  .proof-card { border-radius: 8px; padding: 14px; font-size: 0.78rem; line-height: 1.8; }
+  .proof-upper { background: rgba(255,107,157,0.07); border: 1px solid rgba(255,107,157,0.3); }
+  .proof-lower { background: rgba(0,212,255,0.07); border: 1px solid rgba(0,212,255,0.3); }
+  .proof-card strong { display: block; font-size: 0.82rem; margin-bottom: 6px; }
+  .proof-upper strong { color: var(--accent-b); }
+  .proof-lower strong { color: var(--accent-a); }
+
+  .hidden { display: none; }
+
+  @keyframes pop-in {
+    from { transform: scale(0.4) translateY(8px); opacity: 0; }
+    to   { transform: scale(1) translateY(0); opacity: 1; }
+  }
+  .pop { animation: pop-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+</style>
+</head>
+<body>
+
+<h1>序列插入后的最长非递减子序列</h1>
+<p class="subtitle">交互可视化 · 输入两个序列，逐步理解解题过程</p>
+
+<!-- Input -->
+<div class="panel">
+  <div class="panel-title">输入序列</div>
+  <div class="input-row">
+    <div class="input-group">
+      <label class="seq-a-label">序列 <span>a</span>（空格分隔）</label>
+      <input type="text" id="inputA" value="3 1 2" placeholder="如：3 1 2">
+    </div>
+    <div class="input-group">
+      <label class="seq-b-label">序列 <span>b</span>（空格分隔）</label>
+      <input type="text" id="inputB" value="2 3 1" placeholder="如：2 3 1">
+    </div>
+    <button onclick="solve()">开始解题 ▶</button>
+  </div>
+</div>
+
+<div id="mainViz" class="hidden">
+
+  <!-- 步骤总览 -->
+  <div class="panel">
+    <div class="panel-title">解题步骤总览</div>
+    <div class="steps-grid">
+      <div class="step-card" id="step1">
+        <div class="step-num">1</div>
+        <div class="step-title">求 LNDS(a)</div>
+        <div class="step-desc">对序列 a 求最长非递减子序列，使用贪心 + 二分（upper_bound）</div>
+      </div>
+      <div class="step-card" id="step2">
+        <div class="step-num">2</div>
+        <div class="step-title">求 LNDS(b)</div>
+        <div class="step-desc">对序列 b 同样求最长非递减子序列</div>
+      </div>
+      <div class="step-card" id="step3">
+        <div class="step-num">3</div>
+        <div class="step-title">归并两个子序列</div>
+        <div class="step-desc">将两个最优子序列归并，构造一种合法的插入方案</div>
+      </div>
+      <div class="step-card" id="step4">
+        <div class="step-num">4</div>
+        <div class="step-title">输出答案</div>
+        <div class="step-desc">答案 = LNDS(a) + LNDS(b)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 1 -->
+  <div class="panel">
+    <div class="panel-title">步骤 1 · 求 LNDS(a)（<span style="color:var(--accent-a)">蓝色高亮</span>为选中元素）</div>
+    <div class="sub-label">序列 a：</div>
+    <div class="array-visual" id="arrA"></div>
+    <div style="margin-top:20px">
+      <div class="sub-label" style="margin-top:0">贪心 tails 数组变化过程：</div>
+      <div class="dp-wrap" id="dpA"></div>
+      <div class="algo-log" id="logA"></div>
+    </div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="panel">
+    <div class="panel-title">步骤 2 · 求 LNDS(b)（<span style="color:var(--accent-b)">粉色高亮</span>为选中元素）</div>
+    <div class="sub-label">序列 b：</div>
+    <div class="array-visual" id="arrB"></div>
+    <div style="margin-top:20px">
+      <div class="sub-label" style="margin-top:0">贪心 tails 数组变化过程：</div>
+      <div class="dp-wrap" id="dpB"></div>
+      <div class="algo-log" id="logB"></div>
+    </div>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="panel">
+    <div class="panel-title">步骤 3 · 构造最优归并方案</div>
+    <div class="two-col">
+      <div>
+        <div class="sub-label">a 的最优非递减子序列 <span style="color:var(--accent-a)">(LNDS)</span>：</div>
+        <div class="array-visual" id="subA"></div>
+      </div>
+      <div>
+        <div class="sub-label">b 的最优非递减子序列 <span style="color:var(--accent-b)">(LNDS)</span>：</div>
+        <div class="array-visual" id="subB"></div>
+      </div>
+    </div>
+    <div style="margin-top:16px">
+      <div class="sub-label">归并后的非递减序列（对应一种合法插入方案）：</div>
+      <div class="merge-row" id="merged"></div>
+    </div>
+    <div style="margin-top:14px;font-size:0.78rem;color:var(--muted);line-height:1.8">
+      <strong style="color:var(--text)">为什么这是合法的？</strong><br>
+      归并时保持了 a 元素的相对顺序（<span style="color:var(--accent-a)">蓝色标签 a</span>），也保持了 b 元素的相对顺序（<span style="color:var(--accent-b)">粉色标签 b</span>），
+      恰好满足"b 中元素插入 a 后相对顺序不变"的要求，因此对应一种合法的插入方案。
+    </div>
+  </div>
+
+  <!-- 证明 -->
+  <div class="panel">
+    <div class="panel-title">为什么答案恰好 = LNDS(a) + LNDS(b)？</div>
+    <div class="proof-row">
+      <div class="proof-card proof-upper">
+        <strong>上界证明（不可能超过）</strong>
+        任意插入方案得到 2n 长序列，其最长非递减子序列中：<br>
+        · a 的部分 → a 的非递减子序列 ≤ LNDS(a)<br>
+        · b 的部分 → b 的非递减子序列 ≤ LNDS(b)<br>
+        故总长度 ≤ LNDS(a) + LNDS(b)
+      </div>
+      <div class="proof-card proof-lower">
+        <strong>下界证明（可以达到）</strong>
+        取 A' = a 的最长非递减子序列，B' = b 的最长非递减子序列，<br>
+        将 A' 和 B' 归并成一个非递减序列（如归并排序），<br>
+        这对应一种合法插入方案，长度恰好 = LNDS(a) + LNDS(b) ✓
+      </div>
+    </div>
+  </div>
+
+  <!-- 结果 -->
+  <div class="panel">
+    <div class="panel-title">步骤 4 · 最终答案</div>
+    <div class="result-box">
+      <div class="result-formula" id="resFormula"></div>
+      <div class="result-big" id="resBig"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function parseArr(s) {
+  return s.trim().split(/\s+/).map(Number).filter(n => !isNaN(n) && n !== undefined);
+}
+
+function upperBound(arr, size, x) {
+  let lo = 0, hi = size;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (arr[mid] <= x) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+
+function computeLNDS(arr) {
+  const n = arr.length;
+  // O(n^2) dp for index reconstruction
+  const dp = new Array(n).fill(1);
+  const par = new Array(n).fill(-1);
+  for (let i = 1; i < n; i++) {
+    for (let j = 0; j < i; j++) {
+      if (arr[j] <= arr[i] && dp[j] + 1 > dp[i]) {
+        dp[i] = dp[j] + 1;
+        par[i] = j;
+      }
+    }
+  }
+  let maxLen = 0, lastIdx = 0;
+  for (let i = 0; i < n; i++) if (dp[i] > maxLen) { maxLen = dp[i]; lastIdx = i; }
+  const chosen = [];
+  let cur = lastIdx;
+  while (cur !== -1) { chosen.unshift(cur); cur = par[cur]; }
+
+  // O(n log n) for tails history
+  const tails = [];
+  const history = [];
+  for (let i = 0; i < n; i++) {
+    const x = arr[i];
+    const pos = upperBound(tails, tails.length, x);
+    const action = pos === tails.length ? 'append' : 'replace';
+    if (action === 'append') tails.push(x);
+    else tails[pos] = x;
+    history.push({ x, pos, action, snapshot: [...tails] });
+  }
+  return { length: maxLen, chosen: new Set(chosen), history };
+}
+
+function makeCell(val, type, isHl, tag) {
+  const c = document.createElement('div');
+  c.className = `cell cell-${type}${isHl ? ' hl' : ''}`;
+  c.innerHTML = `${val}<span class="cell-idx">${tag !== undefined ? tag : ''}</span>`;
+  return c;
+}
+
+function renderArr(id, arr, chosen, type) {
+  const el = document.getElementById(id);
+  el.innerHTML = '';
+  arr.forEach((v, i) => el.appendChild(makeCell(v, type, chosen.has(i), i)));
+}
+
+function renderDp(id, arr, history) {
+  const el = document.getElementById(id);
+  const maxLen = history[history.length - 1].snapshot.length;
+  let html = '<table><thead><tr><th>当前元素 x</th><th>操作</th><th>替换位置</th>';
+  for (let i = 0; i < maxLen; i++) html += `<th>tails[${i}]</th>`;
+  html += '</tr></thead><tbody>';
+  history.forEach(step => {
+    html += '<tr>';
+    html += `<td style="color:var(--accent-gold);font-weight:700">${step.x}</td>`;
+    html += `<td class="${step.action}-cell">${step.action === 'append' ? '追加 ➕' : '替换 🔁'}</td>`;
+    html += `<td style="color:var(--muted)">${step.pos}</td>`;
+    for (let i = 0; i < maxLen; i++) {
+      const v = step.snapshot[i] !== undefined ? step.snapshot[i] : '–';
+      html += `<td class="${i === step.pos ? 'hi' : ''}">${v}</td>`;
+    }
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+function renderLog(id, arr, history) {
+  const el = document.getElementById(id);
+  let html = '';
+  history.forEach((step, i) => {
+    const act = step.action === 'append'
+      ? `<span class="hg">追加到末尾，tails 长度 +1</span>`
+      : `<span class="hb">替换 tails[${step.pos}]</span>`;
+    html += `<div>处理 arr[${i}]=<span class="hx">${step.x}</span>：upper_bound 找到位置 ${step.pos}，${act} → tails=[${step.snapshot.join(', ')}]</div>`;
+  });
+  el.innerHTML = html;
+}
+
+function mergeSorted(a, b) {
+  const res = [];
+  let i = 0, j = 0;
+  while (i < a.length && j < b.length) {
+    if (a[i] <= b[j]) res.push({ val: a[i++], from: 'a' });
+    else res.push({ val: b[j++], from: 'b' });
+  }
+  while (i < a.length) res.push({ val: a[i++], from: 'a' });
+  while (j < b.length) res.push({ val: b[j++], from: 'b' });
+  return res;
+}
+
+function activateStep(id, delay) {
+  setTimeout(() => {
+    document.getElementById(id).className = 'step-card active';
+  }, delay);
+}
+function doneStep(id, delay) {
+  setTimeout(() => {
+    document.getElementById(id).className = 'step-card done';
+  }, delay);
+}
+
+function solve() {
+  const a = parseArr(document.getElementById('inputA').value);
+  const b = parseArr(document.getElementById('inputB').value);
+  if (!a.length || !b.length) { alert('请输入有效的序列！'); return; }
+
+  document.getElementById('mainViz').classList.remove('hidden');
+
+  ['step1','step2','step3','step4'].forEach(id => {
+    document.getElementById(id).className = 'step-card';
+  });
+
+  const rA = computeLNDS(a);
+  const rB = computeLNDS(b);
+
+  // Step activations
+  activateStep('step1', 0);
+  doneStep('step1', 400);
+  activateStep('step2', 400);
+  doneStep('step2', 800);
+  activateStep('step3', 800);
+  doneStep('step3', 1200);
+  activateStep('step4', 1200);
+
+  // Render arrays
+  renderArr('arrA', a, rA.chosen, 'a');
+  renderArr('arrB', b, rB.chosen, 'b');
+
+  // DP tables
+  renderDp('dpA', a, rA.history);
+  renderDp('dpB', b, rB.history);
+  renderLog('logA', a, rA.history);
+  renderLog('logB', b, rB.history);
+
+  // Subsequences
+  const subAVals = [...rA.chosen].sort((x,y)=>x-y).map(i => a[i]);
+  const subBVals = [...rB.chosen].sort((x,y)=>x-y).map(i => b[i]);
+
+  const subAEl = document.getElementById('subA');
+  subAEl.innerHTML = '';
+  subAVals.forEach(v => subAEl.appendChild(makeCell(v, 'a', true, '')));
+
+  const subBEl = document.getElementById('subB');
+  subBEl.innerHTML = '';
+  subBVals.forEach(v => subBEl.appendChild(makeCell(v, 'b', true, '')));
+
+  // Merged
+  const mergedArr = mergeSorted(subAVals, subBVals);
+  const mergedEl = document.getElementById('merged');
+  mergedEl.innerHTML = '';
+  mergedArr.forEach((item, idx) => {
+    const c = document.createElement('div');
+    c.className = 'cell cell-m hl pop';
+    c.style.animationDelay = `${idx * 70}ms`;
+    c.innerHTML = `${item.val}<span class="tag tag-${item.from}">${item.from}</span>`;
+    mergedEl.appendChild(c);
+    if (idx < mergedArr.length - 1) {
+      const s = document.createElement('span');
+      s.className = 'leq';
+      s.textContent = '≤';
+      mergedEl.appendChild(s);
+    }
+  });
+
+  // Result
+  const total = rA.length + rB.length;
+  document.getElementById('resFormula').innerHTML =
+    `LNDS(<span class="va">a</span>) &nbsp;+&nbsp; LNDS(<span class="vb">b</span>)<br>
+     = <span class="va">${rA.length}</span> &nbsp;+&nbsp; <span class="vb">${rB.length}</span><br>
+     = <span class="vr">${total}</span>`;
+  document.getElementById('resBig').textContent = total;
+}
+
+solve();
+</script>
+</body>
+</html>

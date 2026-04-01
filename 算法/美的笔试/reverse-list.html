@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>链表区间反转可视化</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Sans+SC:wght@400;700;900&display=swap');
+
+  :root {
+    --bg: #0d1117;
+    --card: #161b22;
+    --border: #30363d;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --orange: #d29922;
+    --red: #f85149;
+    --purple: #bc8cff;
+    --pink: #ff6b9d;
+    --text: #c9d1d9;
+    --muted: #6e7681;
+    --node-default: #1f2937;
+    --node-border: #374151;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans SC', sans-serif;
+    min-height: 100vh;
+    padding: 28px 20px;
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 1.4rem;
+    font-weight: 900;
+    background: linear-gradient(90deg, var(--accent), var(--purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 4px;
+  }
+  .subtitle { text-align: center; color: var(--muted); font-size: 0.82rem; margin-bottom: 24px; }
+
+  /* Controls */
+  .controls {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    margin-bottom: 16px;
+    display: flex;
+    gap: 14px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+  }
+  .ctrl-group { display: flex; flex-direction: column; gap: 5px; }
+  .ctrl-group label { font-size: 0.75rem; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+  .ctrl-group label span { color: var(--accent); font-weight: 700; }
+  input[type=text], input[type=number] {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.95rem;
+    padding: 8px 12px;
+    outline: none;
+    width: 220px;
+    transition: border-color 0.2s;
+  }
+  input[type=number] { width: 70px; }
+  input:focus { border-color: var(--accent); }
+
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  button {
+    border: none; border-radius: 7px; cursor: pointer;
+    font-family: 'Noto Sans SC', sans-serif; font-size: 0.85rem;
+    font-weight: 700; padding: 8px 18px; transition: all 0.15s;
+  }
+  .btn-init { background: linear-gradient(135deg, var(--accent), #0070f3); color: #fff; }
+  .btn-step { background: linear-gradient(135deg, var(--green), #26a641); color: #fff; }
+  .btn-all  { background: linear-gradient(135deg, var(--orange), #e08c1a); color: #000; }
+  .btn-reset { background: var(--node-default); color: var(--muted); border: 1px solid var(--border); }
+  button:hover { opacity: 0.85; transform: translateY(-1px); }
+  button:active { transform: scale(0.97); }
+  button:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+  /* Legend */
+  .legend {
+    display: flex; gap: 16px; flex-wrap: wrap;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 16px; margin-bottom: 16px;
+    font-size: 0.75rem;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+  .dot-normal { background: var(--node-default); border: 2px solid var(--node-border); }
+  .dot-pre    { background: rgba(88,166,255,0.2); border: 2px solid var(--accent); }
+  .dot-cur    { background: rgba(63,185,80,0.2);  border: 2px solid var(--green); }
+  .dot-next   { background: rgba(188,140,255,0.2);border: 2px solid var(--purple); }
+  .dot-range  { background: rgba(216,41,41,0.15); border: 2px solid #f85149; }
+  .dot-done   { background: rgba(63,185,80,0.15); border: 2px solid var(--green); }
+
+  /* Linked list canvas area */
+  .viz-area {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px; margin-bottom: 16px;
+    overflow-x: auto;
+  }
+  .viz-title { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; }
+
+  .list-row {
+    display: flex; align-items: center; gap: 0;
+    min-height: 80px; padding: 10px 0 24px 0; position: relative;
+  }
+
+  .node-wrap {
+    display: flex; align-items: center;
+    transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .node {
+    position: relative;
+    width: 54px; height: 54px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.1rem; font-weight: 700;
+    border: 2px solid var(--node-border);
+    background: var(--node-default);
+    color: var(--text);
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    flex-shrink: 0;
+    z-index: 2;
+  }
+
+  .node.node-pre   { background: rgba(88,166,255,0.18); border-color: var(--accent); color: var(--accent); }
+  .node.node-cur   { background: rgba(63,185,80,0.18);  border-color: var(--green);  color: var(--green);  }
+  .node.node-next  { background: rgba(188,140,255,0.18);border-color: var(--purple); color: var(--purple); }
+  .node.node-range { background: rgba(216,41,41,0.12);  border-color: var(--red);    color: #ffa0a0; }
+  .node.node-done  { background: rgba(63,185,80,0.12);  border-color: var(--green);  color: #90ee90; }
+  .node.node-dummy { background: #1a1a2e; border-color: #333; color: var(--muted); font-size: 0.7rem; }
+
+  .node-label {
+    position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%);
+    font-size: 0.62rem; font-family: 'JetBrains Mono', monospace;
+    white-space: nowrap;
+  }
+  .node-label.lbl-pre   { color: var(--accent); }
+  .node-label.lbl-cur   { color: var(--green); }
+  .node-label.lbl-next  { color: var(--purple); }
+
+  .arrow {
+    width: 32px; height: 2px;
+    background: var(--muted);
+    position: relative; flex-shrink: 0;
+    transition: background 0.4s;
+    z-index: 1;
+  }
+  .arrow::after {
+    content: '';
+    position: absolute; right: -1px; top: -4px;
+    border: 5px solid transparent;
+    border-left-color: var(--muted);
+  }
+  .arrow.arr-active { background: var(--orange); }
+  .arrow.arr-active::after { border-left-color: var(--orange); }
+  .arrow.arr-new { background: var(--purple); }
+  .arrow.arr-new::after { border-left-color: var(--purple); }
+
+  .null-node {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem; color: var(--muted);
+    margin-left: 4px;
+  }
+
+  /* Step info */
+  .step-panel {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px 20px; margin-bottom: 16px;
+  }
+  .step-panel-title { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+
+  .step-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255,215,0,0.1); border: 1px solid rgba(255,215,0,0.3);
+    border-radius: 20px; padding: 4px 14px;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;
+    color: #ffd700; margin-bottom: 12px;
+  }
+
+  .code-block {
+    background: #0d1117; border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 16px; margin-top: 10px;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;
+    line-height: 1.9;
+  }
+  .code-line { transition: all 0.3s; border-radius: 4px; padding: 0 4px; }
+  .code-line.active-line {
+    background: rgba(255,215,0,0.15);
+    border-left: 2px solid #ffd700;
+    padding-left: 8px;
+    color: #ffd700;
+  }
+  .code-line .ck  { color: #ff7b72; } /* keyword */
+  .code-line .cv  { color: var(--accent); } /* variable */
+  .code-line .cm  { color: var(--muted); font-style: italic; } /* comment */
+  .code-line .cc  { color: var(--green); } /* cur */
+  .code-line .cp  { color: var(--accent); } /* pre */
+  .code-line .cn  { color: var(--purple); } /* next */
+
+  .desc-box {
+    background: rgba(88,166,255,0.07); border: 1px solid rgba(88,166,255,0.2);
+    border-radius: 8px; padding: 10px 14px; margin-top: 10px;
+    font-size: 0.82rem; line-height: 1.8; color: var(--text);
+  }
+  .desc-box strong { color: var(--orange); }
+
+  /* Progress bar */
+  .progress-wrap { margin-top: 10px; }
+  .progress-label { font-size: 0.72rem; color: var(--muted); margin-bottom: 4px; font-family: 'JetBrains Mono', monospace; }
+  .progress-bar {
+    height: 6px; background: var(--border); border-radius: 3px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; background: linear-gradient(90deg, var(--accent), var(--green));
+    border-radius: 3px; transition: width 0.4s ease;
+    width: 0%;
+  }
+
+  @keyframes pop {
+    0%   { transform: scale(0.6) translateY(-8px); opacity: 0; }
+    70%  { transform: scale(1.15) translateY(2px); }
+    100% { transform: scale(1) translateY(0); opacity: 1; }
+  }
+  .pop { animation: pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+  @keyframes highlight-flash {
+    0%, 100% { box-shadow: none; }
+    50% { box-shadow: 0 0 0 4px rgba(255,215,0,0.4); }
+  }
+  .flash { animation: highlight-flash 0.5s ease 2; }
+</style>
+</head>
+<body>
+
+<h1>链表区间反转 · 头插法可视化</h1>
+<p class="subtitle">将链表第 m 到第 n 位置之间的节点原地反转 · 时间 O(n)，空间 O(1)</p>
+
+<!-- Controls -->
+<div class="controls">
+  <div class="ctrl-group">
+    <label>链表值（空格分隔）</label>
+    <input type="text" id="inputList" value="1 2 3 4 5 6 7">
+  </div>
+  <div class="ctrl-group">
+    <label><span>m</span>（起始位置）</label>
+    <input type="number" id="inputM" value="2" min="1">
+  </div>
+  <div class="ctrl-group">
+    <label><span>n</span>（结束位置）</label>
+    <input type="number" id="inputN" value="6" min="1">
+  </div>
+  <div class="btn-row">
+    <button class="btn-init" onclick="init()">初始化 ▶</button>
+    <button class="btn-step" id="btnStep" onclick="step()" disabled>下一步 →</button>
+    <button class="btn-all"  id="btnAll"  onclick="runAll()" disabled>一键完成 ⚡</button>
+    <button class="btn-reset" onclick="reset()">重置</button>
+  </div>
+</div>
+
+<!-- Legend -->
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot dot-normal"></div>普通节点</div>
+  <div class="legend-item"><div class="legend-dot dot-pre"></div><span style="color:var(--accent)">pre</span>（反转区前驱）</div>
+  <div class="legend-item"><div class="legend-dot dot-cur"></div><span style="color:var(--green)">cur</span>（反转区首节点，固定不动）</div>
+  <div class="legend-item"><div class="legend-dot dot-next"></div><span style="color:var(--purple)">next</span>（待头插节点）</div>
+  <div class="legend-item"><div class="legend-dot dot-range"></div>反转区间</div>
+  <div class="legend-item"><div class="legend-dot dot-done"></div>已完成反转</div>
+</div>
+
+<!-- Linked list visualization -->
+<div class="viz-area">
+  <div class="viz-title">链表状态</div>
+  <div class="list-row" id="listRow"></div>
+</div>
+
+<!-- Step panel -->
+<div class="step-panel">
+  <div class="step-panel-title">当前步骤解析</div>
+  <div class="step-badge" id="stepBadge">请先点击「初始化」</div>
+  <div class="desc-box" id="descBox">输入链表和 m、n 的值，点击「初始化」开始。</div>
+
+  <div class="code-block" id="codeBlock">
+    <div class="code-line" id="cl0"><span class="ck">ListNode</span> dummy = <span class="ck">new</span> ListNode(0); dummy.next = head;</div>
+    <div class="code-line" id="cl1"><span class="ck">ListNode</span> <span class="cp">pre</span> = dummy;</div>
+    <div class="code-line" id="cl2"><span class="ck">for</span> (<span class="ck">int</span> i = 1; i &lt; m; i++) <span class="cp">pre</span> = <span class="cp">pre</span>.next; <span class="cm">// pre 移到第 m-1 个节点</span></div>
+    <div class="code-line" id="cl3"><span class="ck">ListNode</span> <span class="cc">cur</span> = <span class="cp">pre</span>.next; <span class="cm">// cur 固定在第 m 个节点</span></div>
+    <div class="code-line" id="cl4"><span class="ck">for</span> (<span class="ck">int</span> i = 0; i &lt; n - m; i++) {</div>
+    <div class="code-line" id="cl5">&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">ListNode</span> <span class="cn">next</span> = <span class="cc">cur</span>.next; <span class="cm">// ① 取出 cur 后面的节点</span></div>
+    <div class="code-line" id="cl6">&nbsp;&nbsp;&nbsp;&nbsp;<span class="cc">cur</span>.next = <span class="cn">next</span>.next; <span class="cm">// ② cur 跳过 next</span></div>
+    <div class="code-line" id="cl7">&nbsp;&nbsp;&nbsp;&nbsp;<span class="cn">next</span>.next = <span class="cp">pre</span>.next; <span class="cm">// ③ next 指向旧的第一个</span></div>
+    <div class="code-line" id="cl8">&nbsp;&nbsp;&nbsp;&nbsp;<span class="cp">pre</span>.next = <span class="cn">next</span>; &nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// ④ pre 指向 next（头插完成）</span></div>
+    <div class="code-line" id="cl9">}</div>
+    <div class="code-line" id="cl10"><span class="ck">return</span> dummy.next;</div>
+  </div>
+
+  <div class="progress-wrap">
+    <div class="progress-label" id="progressLabel">进度：0 / 0</div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+  </div>
+</div>
+
+<script>
+// ─── State ───────────────────────────────────────────────────────────────────
+let arr = [], m = 0, n = 0;
+let state = 'idle'; // idle | pre-moving | running | done
+let nodes = [];     // {val, type, label} (runtime)
+let stepIdx = 0;    // 0..n-m-1
+let totalSteps = 0;
+let preIdx = 0;     // index of pre in nodes[]
+let curIdx = 0;
+let nextIdx = 0;
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+function init() {
+  arr = document.getElementById('inputList').value.trim().split(/\s+/).map(Number).filter(n => !isNaN(n));
+  m = parseInt(document.getElementById('inputM').value);
+  n = parseInt(document.getElementById('inputN').value);
+  if (arr.length === 0 || m < 1 || n < 1 || m > n || n > arr.length) {
+    alert('请检查输入：1 ≤ m ≤ n ≤ 链表长度'); return;
+  }
+  reset();
+  // Build node list: dummy + arr
+  nodes = [{ val: 'D', type: 'dummy', label: '' }, ...arr.map(v => ({ val: v, type: 'normal', label: '' }))];
+  totalSteps = n - m;
+  stepIdx = 0;
+  state = 'inited';
+
+  // Mark range
+  for (let i = m; i <= n; i++) nodes[i].type = 'range';
+  // Mark pre and cur
+  preIdx = m - 1; // pre is the (m-1)th node (0=dummy,1=first,...)
+  curIdx = m;
+  nodes[preIdx].type = 'pre'; nodes[preIdx].label = 'pre';
+  nodes[curIdx].type = 'cur'; nodes[curIdx].label = 'cur';
+
+  renderList();
+  highlightCode(['cl0','cl1','cl2','cl3']);
+  setDesc(`初始化完成。<strong>pre</strong> 指向第 ${m-1} 个节点（值=${nodes[preIdx].val}），<strong>cur</strong> 固定在第 ${m} 个节点（值=${nodes[curIdx].val}）。共需执行头插 <strong>${totalSteps}</strong> 次。`);
+  setBadge(`准备开始，共 ${totalSteps} 次头插`);
+  setProgress(0, totalSteps);
+
+  document.getElementById('btnStep').disabled = totalSteps === 0;
+  document.getElementById('btnAll').disabled  = totalSteps === 0;
+  if (totalSteps === 0) { markDone(); }
+}
+
+// ─── Step ─────────────────────────────────────────────────────────────────────
+function step() {
+  if (stepIdx >= totalSteps) { markDone(); return; }
+
+  // nextIdx = the node right after cur in nodes[]
+  // After head-insert, structure changes: the "next" node moves to after pre
+  // We maintain a virtual linked list as index array
+  // Simple: just rebuild nodes array each step based on actual reversal
+
+  const round = stepIdx + 1;
+
+  // Simulate on actual arr indices (1-based: dummy=0, node1=1...)
+  // We maintain node values in nodes[] and restructure
+  // nextIdx is curIdx+1 before each step? NO – after insertions, cur.next changes
+  // Let's track with actual linked-list pointers on nodes array.
+
+  // Actually let's simulate with a real linked list for correctness
+  // We rebuild nodes from scratch each step
+
+  // Get next (the node after cur in current virtual list)
+  // nodes[curIdx].nextPtr gives us the next
+  // Let's use a nextPtr field
+  // Initialize nextPtr on first step
+  if (stepIdx === 0) {
+    // Set nextPtr for all nodes
+    for (let i = 0; i < nodes.length - 1; i++) nodes[i].nextPtr = i + 1;
+    nodes[nodes.length - 1].nextPtr = -1;
+  }
+
+  const nextPtr = nodes[curIdx].nextPtr; // index of "next" node
+  if (nextPtr === -1) { markDone(); return; }
+
+  // ① next = cur.next
+  // ② cur.next = next.next
+  nodes[curIdx].nextPtr = nodes[nextPtr].nextPtr;
+  // ③ next.next = pre.next
+  nodes[nextPtr].nextPtr = nodes[preIdx].nextPtr;
+  // ④ pre.next = next
+  nodes[preIdx].nextPtr = nextPtr;
+
+  // Now rebuild nodes array from linked list order
+  const newOrder = [];
+  let ptr = 0; // start from dummy
+  while (ptr !== -1) {
+    newOrder.push(ptr);
+    ptr = nodes[ptr].nextPtr;
+  }
+
+  // Reset types
+  nodes.forEach(n => { n.type = 'normal'; n.label = ''; });
+  // Mark done range (already reversed: from pre.next to ..., round nodes)
+  // Mark: nodes between preIdx and curIdx (exclusive) are done
+  // Find them in new order
+  const prePos = newOrder.indexOf(preIdx);
+  const curPos = newOrder.indexOf(curIdx);
+  for (let i = prePos + 1; i < curPos; i++) nodes[newOrder[i]].type = 'done';
+  // cur and next get types
+  nodes[0].type = 'dummy';
+  nodes[preIdx].type = 'pre'; nodes[preIdx].label = 'pre';
+  nodes[curIdx].type = 'cur'; nodes[curIdx].label = 'cur';
+  nodes[nextPtr].type = 'next'; nodes[nextPtr].label = 'next';
+
+  // Reorder nodes array based on linked list
+  const reordered = newOrder.map(i => nodes[i]);
+  nodes = reordered;
+  // Rebuild nextPtr (now sequential in new array)
+  for (let i = 0; i < nodes.length - 1; i++) nodes[i].nextPtr = i + 1;
+  nodes[nodes.length - 1].nextPtr = -1;
+  // Recalculate preIdx, curIdx in new array
+  preIdx  = newOrder.indexOf(preIdx);
+  curIdx  = newOrder.indexOf(curIdx);
+  const nextInNew = newOrder.indexOf(nextPtr);
+
+  renderList(nextInNew);
+  highlightCode(['cl4','cl5','cl6','cl7','cl8']);
+
+  stepIdx++;
+  setProgress(stepIdx, totalSteps);
+  setBadge(`第 ${round} 次头插 / 共 ${totalSteps} 次`);
+
+  const preVal  = nodes[preIdx].val;
+  const curVal  = nodes[curIdx].val;
+  const nextVal = nodes[nextInNew].val;
+  setDesc(
+    `<strong>① next = cur.next</strong>：取出 cur(${curVal}) 后面的节点 next(${nextVal})<br>` +
+    `<strong>② cur.next = next.next</strong>：cur(${curVal}) 跳过 next，指向更后面<br>` +
+    `<strong>③ next.next = pre.next</strong>：next(${nextVal}) 指向当前反转区第一个<br>` +
+    `<strong>④ pre.next = next</strong>：pre(${preVal}) 直接指向 next(${nextVal})，头插完成 ✓`
+  );
+
+  if (stepIdx >= totalSteps) {
+    setTimeout(() => markDone(), 400);
+  }
+}
+
+function markDone() {
+  state = 'done';
+  nodes.forEach((nd, i) => {
+    if (nd.type === 'range' || nd.type === 'done' || nd.type === 'next' || nd.type === 'cur') {
+      nd.type = 'done'; nd.label = '';
+    }
+    if (nd.type === 'pre') { nd.type = 'normal'; nd.label = ''; }
+  });
+  renderList();
+  highlightCode(['cl10']);
+  setProgress(totalSteps, totalSteps);
+  setBadge('✅ 反转完成！');
+  setDesc(`链表区间 [${m}, ${n}] 反转完毕。绿色节点为已反转部分。`);
+  document.getElementById('btnStep').disabled = true;
+  document.getElementById('btnAll').disabled  = true;
+}
+
+function runAll() {
+  document.getElementById('btnStep').disabled = true;
+  document.getElementById('btnAll').disabled  = true;
+  let delay = 0;
+  for (let i = stepIdx; i < totalSteps; i++) {
+    setTimeout(() => step(), delay);
+    delay += 600;
+  }
+}
+
+function reset() {
+  nodes = []; stepIdx = 0; totalSteps = 0; state = 'idle';
+  document.getElementById('listRow').innerHTML = '';
+  document.getElementById('btnStep').disabled = true;
+  document.getElementById('btnAll').disabled  = true;
+  setDesc('输入链表和 m、n 的值，点击「初始化」开始。');
+  setBadge('请先点击「初始化」');
+  highlightCode([]);
+  setProgress(0, 0);
+}
+
+// ─── Render ──────────────────────────────────────────────────────────────────
+function renderList(flashIdx) {
+  const row = document.getElementById('listRow');
+  row.innerHTML = '';
+
+  nodes.forEach((nd, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'node-wrap';
+
+    const node = document.createElement('div');
+    node.className = `node node-${nd.type}`;
+    node.textContent = nd.val;
+
+    if (nd.label) {
+      const lbl = document.createElement('span');
+      lbl.className = `node-label lbl-${nd.type}`;
+      lbl.textContent = nd.label;
+      node.appendChild(lbl);
+    }
+
+    if (i === flashIdx) node.classList.add('flash');
+
+    wrap.appendChild(node);
+
+    if (i < nodes.length - 1) {
+      const arrow = document.createElement('div');
+      arrow.className = 'arrow';
+      wrap.appendChild(arrow);
+    }
+
+    row.appendChild(wrap);
+  });
+
+  const nullSpan = document.createElement('div');
+  nullSpan.className = 'arrow';
+  row.appendChild(nullSpan);
+  const nullLabel = document.createElement('span');
+  nullLabel.className = 'null-node';
+  nullLabel.textContent = 'NULL';
+  row.appendChild(nullLabel);
+}
+
+function highlightCode(activeIds) {
+  const allIds = ['cl0','cl1','cl2','cl3','cl4','cl5','cl6','cl7','cl8','cl9','cl10'];
+  allIds.forEach(id => {
+    const el = document.getElementById(id);
+    el.classList.toggle('active-line', activeIds.includes(id));
+  });
+}
+
+function setDesc(html) { document.getElementById('descBox').innerHTML = html; }
+function setBadge(text) { document.getElementById('stepBadge').textContent = text; }
+function setProgress(cur, total) {
+  const pct = total === 0 ? 0 : Math.round(cur / total * 100);
+  document.getElementById('progressLabel').textContent = `进度：${cur} / ${total}（${pct}%）`;
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+
+// Auto init on load
+init();
+</script>
+</body>
+</html>

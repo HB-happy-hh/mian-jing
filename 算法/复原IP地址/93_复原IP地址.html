@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>LeetCode 93 · 复原 IP 地址</title>
+<link href="https://fonts.googleapis.com/css2?family=ZCOOL+XiaoWei&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d1a;
+    --panel: #14142b;
+    --border: #2a2a55;
+    --green: #4ecca3;
+    --red: #e94560;
+    --gold: #f5a623;
+    --purple: #a78bfa;
+    --blue: #60a5fa;
+    --text: #e0e0f0;
+    --muted: #5a5a90;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    padding: 24px 20px;
+    min-height: 100vh;
+  }
+  h1 {
+    font-family: 'ZCOOL XiaoWei', serif;
+    text-align: center;
+    font-size: 1.9rem;
+    color: var(--green);
+    letter-spacing: 4px;
+    margin-bottom: 4px;
+    text-shadow: 0 0 20px rgba(78,204,163,0.45);
+  }
+  .sub { text-align: center; color: var(--muted); font-size: 0.72rem; letter-spacing: 2px; margin-bottom: 24px; }
+
+  .wrap { max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+
+  /* ── Card ── */
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; }
+  .card-title { font-size: 0.7rem; color: var(--gold); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 14px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+
+  /* ── Input row ── */
+  .input-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  input[type=text] {
+    background: #08080f; border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); padding: 9px 14px; font-family: inherit; font-size: 1rem;
+    outline: none; width: 260px; letter-spacing: 3px;
+  }
+  input[type=text]:focus { border-color: var(--green); }
+  .btn {
+    padding: 9px 18px; border-radius: 8px; border: none;
+    font-family: inherit; font-size: 0.8rem; cursor: pointer;
+    font-weight: 700; letter-spacing: 1px; transition: all 0.18s;
+  }
+  .btn:hover { filter: brightness(1.2); transform: translateY(-1px); }
+  .btn-run  { background: var(--green); color: #0d0d1a; }
+  .btn-step { background: var(--purple); color: #0d0d1a; }
+  .btn-reset{ background: var(--border); color: var(--text); }
+  .speed-label { font-size: 0.7rem; color: var(--muted); margin-left: 8px; }
+  input[type=range] { accent-color: var(--green); width: 90px; }
+
+  /* ── String display ── */
+  .str-display { display: flex; gap: 3px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+  .char-box {
+    width: 34px; height: 34px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem; font-weight: 700;
+    border: 2px solid var(--border);
+    background: #08080f; color: var(--muted);
+    transition: all 0.3s;
+    position: relative;
+  }
+  .char-box .idx { position: absolute; bottom: -18px; font-size: 0.55rem; color: var(--muted); }
+  .char-box.seg0 { border-color: var(--red);    background: rgba(233,69,96,0.18);   color: var(--red); }
+  .char-box.seg1 { border-color: var(--green);  background: rgba(78,204,163,0.15);  color: var(--green); }
+  .char-box.seg2 { border-color: var(--gold);   background: rgba(245,166,35,0.18);  color: var(--gold); }
+  .char-box.seg3 { border-color: var(--purple); background: rgba(167,139,250,0.18); color: var(--purple); }
+  .char-box.cursor-pos { box-shadow: 0 0 0 2px #fff, 0 0 12px #fff; }
+  .seg-colors { display: flex; gap: 10px; margin-top: 24px; flex-wrap: wrap; }
+  .seg-badge {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 0.7rem; padding: 4px 10px; border-radius: 20px;
+    border: 1.5px solid; opacity: 0.5; transition: all 0.3s;
+  }
+  .seg-badge.active { opacity: 1; }
+  .seg-badge.s0 { border-color: var(--red);    color: var(--red); }
+  .seg-badge.s1 { border-color: var(--green);  color: var(--green); }
+  .seg-badge.s2 { border-color: var(--gold);   color: var(--gold); }
+  .seg-badge.s3 { border-color: var(--purple); color: var(--purple); }
+  .seg-val { font-weight: 700; font-size: 0.85rem; }
+
+  /* ── Condition checks ── */
+  .checks { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+  .check-item {
+    padding: 5px 12px; border-radius: 20px; font-size: 0.7rem; border: 1px solid var(--border);
+    color: var(--muted); transition: all 0.3s;
+  }
+  .check-item.pass { border-color: var(--green); color: var(--green); background: rgba(78,204,163,0.1); }
+  .check-item.fail { border-color: var(--red);   color: var(--red);   background: rgba(233,69,96,0.1); }
+  .check-item.idle { border-color: var(--border); color: var(--muted); }
+
+  /* ── Log ── */
+  .log-box {
+    background: #06060f; border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 14px; font-size: 0.7rem; line-height: 1.8;
+    max-height: 180px; overflow-y: auto; color: var(--muted);
+  }
+  .log-box span { display: block; }
+  .log-box .ok   { color: var(--green); }
+  .log-box .fail { color: var(--red); }
+  .log-box .info { color: var(--blue); }
+  .log-box .warn { color: var(--gold); }
+  .log-box .back { color: var(--purple); }
+
+  /* ── Tree ── */
+  #tree-svg { width: 100%; min-height: 300px; }
+
+  /* ── Results ── */
+  .results { display: flex; flex-wrap: wrap; gap: 10px; min-height: 36px; }
+  .ip-chip {
+    padding: 6px 14px; border-radius: 20px;
+    border: 1.5px solid var(--green); color: var(--green);
+    background: rgba(78,204,163,0.1); font-size: 0.85rem; font-weight: 700;
+    animation: pop 0.3s ease;
+  }
+  @keyframes pop { from { transform: scale(0.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+  /* ── Call stack ── */
+  .call-stack { display: flex; flex-direction: column-reverse; gap: 3px; min-height: 40px; }
+  .frame {
+    padding: 5px 12px; border-radius: 6px; font-size: 0.7rem;
+    border-left: 3px solid var(--purple); background: rgba(167,139,250,0.08);
+    color: var(--purple); transition: all 0.3s;
+  }
+  .frame.top { border-left-color: var(--gold); background: rgba(245,166,35,0.12); color: var(--gold); }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 680px) { .two-col { grid-template-columns: 1fr; } }
+
+  .stat-row { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 8px; }
+  .stat { font-size: 0.72rem; color: var(--muted); }
+  .stat span { color: var(--gold); font-weight: 700; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+
+<h1>93 · 复原 IP 地址</h1>
+<div class="sub">回溯算法可视化 · 逐步观察 DFS 切割过程</div>
+
+<div class="wrap">
+
+  <!-- ── 控制台 ── -->
+  <div class="card">
+    <div class="card-title">▶ 控制台</div>
+    <div class="input-row">
+      <input type="text" id="inp" value="25525511135" maxlength="16" placeholder="输入数字字符串">
+      <button class="btn btn-run"  onclick="startAuto()">自动演示</button>
+      <button class="btn btn-step" onclick="stepOnce()">单步执行</button>
+      <button class="btn btn-reset" onclick="doReset()">重置</button>
+      <span class="speed-label">速度</span>
+      <input type="range" id="speed" min="100" max="1500" value="700" step="100">
+    </div>
+    <div class="stat-row">
+      <div class="stat">调用次数 <span id="call-cnt">0</span></div>
+      <div class="stat">剪枝次数 <span id="prune-cnt">0</span></div>
+      <div class="stat">回溯次数 <span id="back-cnt">0</span></div>
+      <div class="stat">找到结果 <span id="res-cnt">0</span></div>
+    </div>
+  </div>
+
+  <!-- ── 当前状态 ── -->
+  <div class="card">
+    <div class="card-title">🔍 当前切割状态</div>
+    <div class="str-display" id="str-display"></div>
+    <div class="seg-colors" id="seg-badges">
+      <div class="seg-badge s0"><span>段1</span><span class="seg-val" id="sv0">—</span></div>
+      <div class="seg-badge s1"><span>段2</span><span class="seg-val" id="sv1">—</span></div>
+      <div class="seg-badge s2"><span>段3</span><span class="seg-val" id="sv2">—</span></div>
+      <div class="seg-badge s3"><span>段4</span><span class="seg-val" id="sv3">—</span></div>
+    </div>
+    <div class="checks" id="checks">
+      <div class="check-item idle" id="ck-len">长度 1~3</div>
+      <div class="check-item idle" id="ck-zero">无前导零</div>
+      <div class="check-item idle" id="ck-range">值 ≤ 255</div>
+      <div class="check-item idle" id="ck-remain">剩余字符合理</div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <!-- ── 日志 ── -->
+    <div class="card">
+      <div class="card-title">📋 执行日志</div>
+      <div class="log-box" id="log"></div>
+    </div>
+
+    <!-- ── 调用栈 ── -->
+    <div class="card">
+      <div class="card-title">📦 调用栈</div>
+      <div class="call-stack" id="call-stack"></div>
+    </div>
+  </div>
+
+  <!-- ── 结果 ── -->
+  <div class="card">
+    <div class="card-title">✅ 找到的合法 IP 地址</div>
+    <div class="results" id="results"><span style="color:var(--muted);font-size:0.75rem">// 等待执行...</span></div>
+  </div>
+
+</div>
+
+<script>
+// ── 状态机 ──────────────────────────────────────────────
+let s = '';
+let steps = [];      // 预先生成所有步骤
+let stepIdx = 0;
+let timer = null;
+let callCnt = 0, pruneCnt = 0, backCnt = 0, resCnt = 0;
+
+// ── 生成步骤序列 ────────────────────────────────────────
+function generateSteps(str) {
+  const result = [];
+  const segs = [];
+
+  function dfs(index) {
+    // 入栈事件
+    result.push({ type: 'enter', index, segs: [...segs] });
+
+    if (segs.length === 4 && index === str.length) {
+      result.push({ type: 'found', index, segs: [...segs] });
+      result.push({ type: 'return', index, segs: [...segs] });
+      return;
+    }
+
+    if (segs.length === 4 || index === str.length) {
+      result.push({ type: 'prune', index, segs: [...segs], reason: segs.length === 4 ? '段数已够但字符未用完' : '字符已用完但段数不足' });
+      result.push({ type: 'return', index, segs: [...segs] });
+      return;
+    }
+
+    for (let len = 1; len <= 3; len++) {
+      if (index + len > str.length) break;
+      const seg = str.substring(index, index + len);
+
+      // 前导零
+      if (seg.length > 1 && seg[0] === '0') {
+        result.push({ type: 'prune', index, segs: [...segs], reason: `"${seg}" 有前导零，break`, seg });
+        break;
+      }
+      // 超过255
+      if (parseInt(seg) > 255) {
+        result.push({ type: 'prune', index, segs: [...segs], reason: `"${seg}" > 255，break`, seg });
+        break;
+      }
+
+      result.push({ type: 'try', index, segs: [...segs], seg, len });
+      segs.push(seg);
+      dfs(index + len);
+      segs.pop();
+      result.push({ type: 'backtrack', index, segs: [...segs], seg });
+    }
+
+    result.push({ type: 'return', index, segs: [...segs] });
+  }
+
+  dfs(0);
+  return result;
+}
+
+// ── 应用步骤 ────────────────────────────────────────────
+function applyStep(step) {
+  const segColors = ['seg0','seg1','seg2','seg3'];
+
+  // 更新字符着色
+  updateStrDisplay(step.segs, step.index, s);
+
+  // 更新段 badge
+  for (let i = 0; i < 4; i++) {
+    const el = document.getElementById('sv' + i);
+    const badge = document.querySelectorAll('.seg-badge')[i];
+    if (i < step.segs.length) {
+      el.textContent = '"' + step.segs[i] + '"';
+      badge.classList.add('active');
+    } else {
+      el.textContent = '—';
+      badge.classList.remove('active');
+    }
+  }
+
+  // 重置校验
+  ['ck-len','ck-zero','ck-range','ck-remain'].forEach(id => {
+    document.getElementById(id).className = 'check-item idle';
+  });
+
+  // 日志 + 校验
+  if (step.type === 'enter') {
+    callCnt++;
+    addLog(`dfs(index=${step.index}, 段数=${step.segs.length})`, 'info');
+    updateCallStack(step.segs, step.index);
+  } else if (step.type === 'try') {
+    setCheck('ck-len',    true);
+    setCheck('ck-zero',   !(step.seg.length > 1 && step.seg[0] === '0'));
+    setCheck('ck-range',  parseInt(step.seg) <= 255);
+    const remain = s.length - step.index - step.len;
+    const remSegs = 4 - step.segs.length - 1;
+    setCheck('ck-remain', remain >= remSegs && remain <= remSegs * 3);
+    addLog(`尝试段${step.segs.length+1} = "${step.seg}"`, 'ok');
+  } else if (step.type === 'prune') {
+    pruneCnt++;
+    addLog(`✂ 剪枝：${step.reason}`, 'fail');
+    if (step.reason.includes('前导零')) { setCheck('ck-zero', false); }
+    else if (step.reason.includes('255')) { setCheck('ck-range', false); }
+    else { setCheck('ck-remain', false); }
+  } else if (step.type === 'found') {
+    resCnt++;
+    const ip = step.segs.join('.');
+    addLog(`🎉 找到合法 IP：${ip}`, 'ok');
+    addResult(ip);
+  } else if (step.type === 'backtrack') {
+    backCnt++;
+    addLog(`↩ 回溯，撤销段 "${step.seg}"`, 'back');
+    updateCallStack(step.segs, step.index);
+  } else if (step.type === 'return') {
+    updateCallStack(step.segs, step.index);
+  }
+
+  // 统计
+  document.getElementById('call-cnt').textContent  = callCnt;
+  document.getElementById('prune-cnt').textContent = pruneCnt;
+  document.getElementById('back-cnt').textContent  = backCnt;
+  document.getElementById('res-cnt').textContent   = resCnt;
+}
+
+function updateStrDisplay(segs, index, str) {
+  const container = document.getElementById('str-display');
+  container.innerHTML = '';
+  // 计算每个字符属于哪段
+  const charSeg = new Array(str.length).fill(-1);
+  let pos = 0;
+  segs.forEach((seg, si) => {
+    for (let i = 0; i < seg.length; i++) charSeg[pos++] = si;
+  });
+
+  for (let i = 0; i < str.length; i++) {
+    const div = document.createElement('div');
+    div.className = 'char-box';
+    if (charSeg[i] >= 0) div.classList.add('seg' + charSeg[i]);
+    if (i === index) div.classList.add('cursor-pos');
+    div.innerHTML = str[i] + `<span class="idx">${i}</span>`;
+    container.appendChild(div);
+  }
+  // 光标指示
+  if (index <= str.length) {
+    const arrow = document.createElement('div');
+    arrow.style.cssText = 'color:var(--gold);font-size:1.2rem;margin-left:4px;align-self:center;';
+    arrow.textContent = index === str.length ? '✓' : '↑' + index;
+    container.appendChild(arrow);
+  }
+}
+
+function updateCallStack(segs, index) {
+  const cs = document.getElementById('call-stack');
+  cs.innerHTML = '';
+  // 简单用 segs 长度模拟调用深度
+  for (let d = 0; d <= segs.length; d++) {
+    const f = document.createElement('div');
+    f.className = 'frame' + (d === segs.length ? ' top' : '');
+    const segStr = segs.slice(0, d).join('.') || '(root)';
+    f.textContent = `dfs(depth=${d})  segs=[${segs.slice(0,d).join(', ')}]`;
+    cs.appendChild(f);
+  }
+}
+
+function setCheck(id, pass) {
+  const el = document.getElementById(id);
+  el.className = 'check-item ' + (pass ? 'pass' : 'fail');
+}
+
+let logCnt = 0;
+function addLog(msg, cls = '') {
+  const log = document.getElementById('log');
+  const sp = document.createElement('span');
+  sp.className = cls;
+  sp.textContent = `[${String(stepIdx).padStart(3,'0')}] ${msg}`;
+  log.appendChild(sp);
+  log.scrollTop = log.scrollHeight;
+  logCnt++;
+  if (logCnt > 60) log.removeChild(log.firstChild);
+}
+
+function addResult(ip) {
+  const box = document.getElementById('results');
+  if (box.querySelector('span')) box.innerHTML = '';
+  const chip = document.createElement('div');
+  chip.className = 'ip-chip';
+  chip.textContent = ip;
+  box.appendChild(chip);
+}
+
+// ── 控制 ──────────────────────────────────────────────
+function doReset() {
+  clearInterval(timer); timer = null;
+  s = document.getElementById('inp').value.replace(/\D/g,'');
+  document.getElementById('inp').value = s;
+  steps = generateSteps(s);
+  stepIdx = 0;
+  callCnt = pruneCnt = backCnt = resCnt = 0;
+  document.getElementById('call-cnt').textContent  = 0;
+  document.getElementById('prune-cnt').textContent = 0;
+  document.getElementById('back-cnt').textContent  = 0;
+  document.getElementById('res-cnt').textContent   = 0;
+  document.getElementById('log').innerHTML = '<span class="info">// 点击"自动演示"或"单步执行"开始</span>';
+  document.getElementById('results').innerHTML = '<span style="color:var(--muted);font-size:0.75rem">// 等待执行...</span>';
+  document.getElementById('call-stack').innerHTML = '';
+  logCnt = 0;
+  updateStrDisplay([], 0, s);
+  for (let i = 0; i < 4; i++) {
+    document.getElementById('sv'+i).textContent = '—';
+    document.querySelectorAll('.seg-badge')[i].classList.remove('active');
+  }
+  ['ck-len','ck-zero','ck-range','ck-remain'].forEach(id => {
+    document.getElementById(id).className = 'check-item idle';
+  });
+}
+
+function stepOnce() {
+  if (!steps.length) doReset();
+  if (stepIdx >= steps.length) { addLog('// 执行完毕', 'warn'); return; }
+  applyStep(steps[stepIdx++]);
+}
+
+function startAuto() {
+  if (timer) { clearInterval(timer); timer = null; return; }
+  if (!steps.length || stepIdx === 0) doReset();
+  const speed = () => 1600 - parseInt(document.getElementById('speed').value);
+  timer = setInterval(() => {
+    if (stepIdx >= steps.length) {
+      clearInterval(timer); timer = null;
+      addLog('// 全部执行完毕 ✓', 'warn');
+      return;
+    }
+    applyStep(steps[stepIdx++]);
+  }, speed());
+}
+
+// 初始化
+doReset();
+</script>
+</body>
+</html>

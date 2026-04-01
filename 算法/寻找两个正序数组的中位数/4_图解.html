@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>4. 寻找两个正序数组的中位数 — 图解</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Serif+SC:wght@400;700;900&display=swap');
+:root{
+  --bg:#0d1117;--sur:#161b22;--bor:#30363d;
+  --y:#f7c948;--b:#58a6ff;--g:#3fb950;--r:#f85149;
+  --mu:#8b949e;--tx:#e6edf3;--cb:#1f2937;--pu:#d2a8ff;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font-family:'Noto Serif SC',serif;padding:40px 24px 80px;min-height:100vh}
+.page{max-width:940px;margin:0 auto}
+header{border-left:5px solid var(--y);padding-left:20px;margin-bottom:44px}
+header .tag{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--y);letter-spacing:3px;text-transform:uppercase;margin-bottom:8px}
+header h1{font-size:32px;font-weight:900}
+header p{color:var(--mu);margin-top:8px;font-size:14px;line-height:1.8}
+.st{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:4px;text-transform:uppercase;color:var(--y);margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.st::after{content:'';flex:1;height:1px;background:var(--bor)}
+section{margin-bottom:44px}
+.card{background:var(--sur);border:1px solid var(--bor);border-radius:12px;padding:20px 24px}
+pre{font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.85;background:var(--cb);border-radius:8px;padding:14px 16px;overflow-x:auto}
+.kw{color:#ff7b72}.fn{color:var(--pu)}.cm{color:var(--mu);font-style:italic}.st2{color:#a5d6ff}.nm{color:var(--y)}
+
+/* ── Controls ── */
+.viz-box{background:var(--sur);border:1px solid var(--bor);border-radius:12px;padding:24px;margin-bottom:0}
+.ctrl-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.ctrl-label{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mu)}
+.cbtn{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;padding:7px 14px;border-radius:7px;cursor:pointer;transition:all .15s;border:1.5px solid var(--bor);background:transparent;color:var(--tx)}
+.cbtn:hover:not(:disabled){border-color:var(--y);color:var(--y)}
+.cbtn:disabled{opacity:.3;cursor:default}
+.cbtn-blue{background:var(--b);color:#000;border-color:var(--b)}
+.cbtn-blue:hover{opacity:.85;border-color:var(--b)!important;color:#000!important}
+.cbtn-red{border-color:var(--r);color:var(--r)}
+.prog{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mu);min-width:52px;text-align:center}
+.cbtn.sel{border-color:var(--y);color:var(--y)}
+
+/* ── Canvas ── */
+#vizCanvas{display:block;width:100%;border-radius:8px}
+.step-desc{background:var(--cb);border:1px solid var(--bor);border-radius:10px;padding:14px 18px;margin-top:14px;min-height:90px}
+.sd-line{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--mu);line-height:1.85;margin-bottom:5px}
+.sd-line:last-child{margin-bottom:0}
+.sd-line code{background:var(--bg);padding:1px 6px;border-radius:4px;color:var(--tx);font-size:11.5px}
+.sd-tag{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px;letter-spacing:.5px;vertical-align:middle;margin-right:6px}
+.tag-y{background:rgba(247,201,72,.18);color:var(--y);border:1px solid rgba(247,201,72,.4)}
+.tag-b{background:rgba(88,166,255,.18);color:var(--b);border:1px solid rgba(88,166,255,.4)}
+.tag-g{background:rgba(63,185,80,.18);color:var(--g);border:1px solid rgba(63,185,80,.4)}
+.tag-r{background:rgba(248,81,73,.18);color:var(--r);border:1px solid rgba(248,81,73,.4)}
+.hi-b{color:var(--b);font-weight:700}.hi-g{color:var(--g);font-weight:700}
+.hi-y{color:var(--y);font-weight:700}.hi-r{color:var(--r);font-weight:700}
+
+/* ── Insight cards ── */
+.insight-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:28px}
+@media(max-width:600px){.insight-row{grid-template-columns:1fr}}
+.ins-card{background:var(--sur);border:1px solid var(--bor);border-radius:10px;padding:18px 20px}
+.ins-card h4{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--y);text-transform:uppercase;margin-bottom:10px}
+.ins-card p{font-size:13px;color:var(--mu);line-height:1.85}
+.formula{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--y);background:rgba(247,201,72,.08);border:1px solid rgba(247,201,72,.25);border-radius:6px;padding:8px 12px;margin-top:10px;line-height:1.9;white-space:pre}
+
+/* ── Code section ── */
+.code-section{background:var(--sur);border:1px solid var(--bor);border-radius:14px;overflow:hidden;margin-bottom:28px}
+.code-header{display:flex;justify-content:space-between;align-items:center;padding:11px 18px;border-bottom:1px solid var(--bor);background:var(--cb)}
+.code-header span{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--mu)}
+.code-tabs{display:flex;gap:6px}
+.code-tab{font-family:'JetBrains Mono',monospace;font-size:11px;padding:4px 12px;border-radius:6px;cursor:pointer;border:1px solid var(--bor);background:transparent;color:var(--mu);transition:all .15s}
+.code-tab.active{background:var(--y);color:#000;border-color:var(--y)}
+pre.tab{display:none;border-radius:0;margin:0}
+pre.tab.active{display:block}
+
+/* ── Complexity ── */
+.ct{width:100%;border-collapse:collapse}
+.ct th,.ct td{font-family:'JetBrains Mono',monospace;font-size:12px;padding:9px 14px;border-bottom:1px solid var(--bor);text-align:left}
+.ct th{color:var(--y);background:var(--cb)}
+.ct tr:last-child td{border-bottom:none}
+.ct td:first-child{color:var(--b)}
+.ct .desc{color:var(--mu);font-family:'Noto Serif SC',serif;font-size:13px}
+.chips{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.chip{font-family:'JetBrains Mono',monospace;font-size:11.5px;padding:5px 14px;border-radius:20px}
+.chip-b{background:rgba(88,166,255,.1);border:1px solid rgba(88,166,255,.3);color:var(--b)}
+.chip-y{background:rgba(247,201,72,.1);border:1px solid rgba(247,201,72,.3);color:var(--y)}
+.chip-g{background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.3);color:var(--g)}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header>
+  <div class="tag">LeetCode · 4 · Hard · Binary Search</div>
+  <h1>寻找两个正序数组的中位数</h1>
+  <p>要求 O(log(m+n))，不能合并排序。核心：在较短数组上二分"切割位置"，<br>
+     找到使左半 ≤ 右半的合法切割，从切割边界直接算出中位数。</p>
+</header>
+
+<!-- 核心思路 -->
+<section>
+  <div class="st">核心思路</div>
+  <div class="insight-row">
+    <div class="ins-card">
+      <h4>中位数的本质</h4>
+      <p>把合并后的有序数组切成<b>等长的左右两半</b>（奇数时左半多一个），中位数就是左半最大值（奇数）或左右边界均值（偶数）。</p>
+      <div class="formula">奇数：median = max(左半最大)
+偶数：median = ( max(左半最大)
+              + min(右半最小) ) / 2</div>
+    </div>
+    <div class="ins-card">
+      <h4>切割合法的条件</h4>
+      <p>设 nums1 左半取 <b>i</b> 个，nums2 左半取 <b>j = half−i</b> 个，切割合法当且仅当交叉比较成立：</p>
+      <div class="formula">nums1[i-1] ≤ nums2[j]   (左1 ≤ 右2)
+nums2[j-1] ≤ nums1[i]   (左2 ≤ 右1)</div>
+    </div>
+    <div class="ins-card">
+      <h4>二分策略</h4>
+      <p>在较短数组上枚举 i（0 到 m），j 由 i 唯一确定。根据不等式方向调整 lo / hi：</p>
+      <div class="formula">nums1[i-1] > nums2[j] → i 太大 → hi=i-1
+nums2[j-1] > nums1[i] → i 太小 → lo=i+1</div>
+    </div>
+    <div class="ins-card">
+      <h4>边界处理</h4>
+      <p>切割位置可以是 0（nums1 全在右半）或 m（nums1 全在左半），越界时用 ±∞ 代替，保证比较逻辑统一。</p>
+      <div class="formula">i=0 → maxLeft1  = −∞
+i=m → minRight1 = +∞
+j=0 → maxLeft2  = −∞
+j=n → minRight2 = +∞</div>
+    </div>
+  </div>
+</section>
+
+<!-- 交互演示 -->
+<section>
+  <div class="st">二分切割逐步演示</div>
+  <div class="viz-box">
+    <div class="ctrl-row">
+      <span class="ctrl-label">示例：</span>
+      <button class="cbtn sel" onclick="loadCase(0)">[1,3] / [2]</button>
+      <button class="cbtn" onclick="loadCase(1)">[1,2] / [3,4]</button>
+      <button class="cbtn" onclick="loadCase(2)">[1,3,5] / [2,4,6]</button>
+      <button class="cbtn" onclick="loadCase(3)">[] / [1]</button>
+      <button class="cbtn" onclick="loadCase(4)">[1,4,7,9] / [2,5,6]</button>
+    </div>
+    <div class="ctrl-row">
+      <button class="cbtn cbtn-blue" id="playBtn" onclick="startPlay()">⏵ 自动播放</button>
+      <button class="cbtn" id="prevBtn" onclick="doStep(-1)">◀</button>
+      <span class="prog" id="progLabel">— / —</span>
+      <button class="cbtn" id="nextBtn" onclick="doStep(1)">▶</button>
+      <button class="cbtn cbtn-red" onclick="doReset()">↺</button>
+    </div>
+    <canvas id="vizCanvas" height="280"></canvas>
+    <div class="step-desc" id="stepDesc">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--mu)">选择示例，点击 ▶ 开始</span>
+    </div>
+  </div>
+</section>
+
+<!-- 代码 -->
+<section>
+  <div class="st">代码实现</div>
+  <div class="code-section">
+    <div class="code-header">
+      <span>FindMedianSortedArrays.java</span>
+      <div class="code-tabs">
+        <button class="code-tab active" onclick="showTab(0)">二分切割 O(log n)</button>
+        <button class="code-tab" onclick="showTab(1)">暴力合并 O(m+n)</button>
+      </div>
+    </div>
+<pre class="tab active"><span class="kw">public double</span> <span class="fn">findMedianSortedArrays</span>(<span class="kw">int</span>[] nums1, <span class="kw">int</span>[] nums2) {
+    <span class="cm">// 始终对较短数组二分</span>
+    <span class="kw">if</span> (nums1.length > nums2.length)
+        <span class="kw">return</span> <span class="fn">findMedianSortedArrays</span>(nums2, nums1);
+
+    <span class="kw">int</span> m = nums1.length, n = nums2.length;
+    <span class="kw">int</span> half = (m + n + <span class="nm">1</span>) / <span class="nm">2</span>;  <span class="cm">// 左半总元素数</span>
+
+    <span class="kw">int</span> lo = <span class="nm">0</span>, hi = m;
+    <span class="kw">while</span> (lo <= hi) {
+        <span class="kw">int</span> i = lo + (hi - lo) / <span class="nm">2</span>;  <span class="cm">// nums1 切割位置</span>
+        <span class="kw">int</span> j = half - i;              <span class="cm">// nums2 切割位置</span>
+
+        <span class="kw">int</span> maxLeft1  = (i == <span class="nm">0</span>) ? Integer.MIN_VALUE : nums1[i - <span class="nm">1</span>];
+        <span class="kw">int</span> minRight1 = (i == m) ? Integer.MAX_VALUE : nums1[i];
+        <span class="kw">int</span> maxLeft2  = (j == <span class="nm">0</span>) ? Integer.MIN_VALUE : nums2[j - <span class="nm">1</span>];
+        <span class="kw">int</span> minRight2 = (j == n) ? Integer.MAX_VALUE : nums2[j];
+
+        <span class="kw">if</span> (maxLeft1 <= minRight2 && maxLeft2 <= minRight1) {
+            <span class="cm">// ✓ 合法切割，直接算中位数</span>
+            <span class="kw">if</span> ((m + n) % <span class="nm">2</span> == <span class="nm">1</span>)
+                <span class="kw">return</span> Math.<span class="fn">max</span>(maxLeft1, maxLeft2);
+            <span class="kw">return</span> (Math.<span class="fn">max</span>(maxLeft1, maxLeft2)
+                  + Math.<span class="fn">min</span>(minRight1, minRight2)) / <span class="nm">2.0</span>;
+        } <span class="kw">else if</span> (maxLeft1 > minRight2) {
+            hi = i - <span class="nm">1</span>;  <span class="cm">// i 太大</span>
+        } <span class="kw">else</span> {
+            lo = i + <span class="nm">1</span>;  <span class="cm">// i 太小</span>
+        }
+    }
+    <span class="kw">return</span> <span class="nm">0.0</span>;
+}</pre>
+<pre class="tab"><span class="kw">public double</span> <span class="fn">findMedianBrute</span>(<span class="kw">int</span>[] nums1, <span class="kw">int</span>[] nums2) {
+    <span class="kw">int</span> m = nums1.length, n = nums2.length;
+    <span class="kw">int</span>[] merged = <span class="kw">new int</span>[m + n];
+    <span class="kw">int</span> i = <span class="nm">0</span>, j = <span class="nm">0</span>, k = <span class="nm">0</span>;
+    <span class="kw">while</span> (i < m && j < n)
+        merged[k++] = nums1[i] <= nums2[j] ? nums1[i++] : nums2[j++];
+    <span class="kw">while</span> (i < m) merged[k++] = nums1[i++];
+    <span class="kw">while</span> (j < n) merged[k++] = nums2[j++];
+
+    <span class="kw">int</span> total = m + n;
+    <span class="kw">return</span> total % <span class="nm">2</span> == <span class="nm">1</span>
+        ? merged[total / <span class="nm">2</span>]
+        : (merged[total / <span class="nm">2</span> - <span class="nm">1</span>] + merged[total / <span class="nm">2</span>]) / <span class="nm">2.0</span>;
+}</pre>
+  </div>
+</section>
+
+<!-- 复杂度 -->
+<section>
+  <div class="st">复杂度分析</div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <table class="ct">
+      <thead><tr><th>方法</th><th>时间</th><th>空间</th><th class="desc">说明</th></tr></thead>
+      <tbody>
+        <tr><td>二分切割</td><td>O(log(min(m,n)))</td><td>O(1)</td><td class="desc">在较短数组二分，满足题目要求</td></tr>
+        <tr><td>暴力合并</td><td>O(m+n)</td><td>O(m+n)</td><td class="desc">直观易懂，但不满足 O(log) 要求</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="chips">
+    <div class="chip chip-b">始终对较短数组二分，保证 j ≥ 0</div>
+    <div class="chip chip-y">边界用 ±∞，统一处理 i=0 / i=m 情况</div>
+    <div class="chip chip-g">合法切割唯一，二分必然收敛</div>
+  </div>
+</section>
+
+</div>
+<script>
+// ══════════════════════════════════════════
+//  Cases
+// ══════════════════════════════════════════
+const CASES = [
+  { a:[1,3],    b:[2] },
+  { a:[1,2],    b:[3,4] },
+  { a:[1,3,5],  b:[2,4,6] },
+  { a:[],       b:[1] },
+  { a:[1,4,7,9],b:[2,5,6] },
+];
+
+let caseIdx   = 0;
+let steps     = [];
+let stepIdx   = 0;
+let playTimer = null;
+
+// ══════════════════════════════════════════
+//  Build simulation steps
+// ══════════════════════════════════════════
+function buildSteps(rawA, rawB) {
+  // Always binary search on shorter
+  let nums1 = rawA, nums2 = rawB, swapped = false;
+  if (nums1.length > nums2.length) { [nums1, nums2] = [nums2, nums1]; swapped = true; }
+
+  const m = nums1.length, n = nums2.length;
+  const half = Math.floor((m + n + 1) / 2);
+  const st = [];
+  let lo = 0, hi = m;
+
+  st.push({ lo, hi, i:-1, j:-1, phase:'init', swapped, m, n, half, nums1, nums2 });
+
+  while (lo <= hi) {
+    const i = lo + Math.floor((hi - lo) / 2);
+    const j = half - i;
+    const maxLeft1  = i === 0 ? -Infinity : nums1[i-1];
+    const minRight1 = i === m ?  Infinity : nums1[i];
+    const maxLeft2  = j === 0 ? -Infinity : nums2[j-1];
+    const minRight2 = j === n ?  Infinity : nums2[j];
+
+    const ok = maxLeft1 <= minRight2 && maxLeft2 <= minRight1;
+    const tooLarge = maxLeft1 > minRight2;
+
+    st.push({ lo, hi, i, j, maxLeft1, minRight1, maxLeft2, minRight2, ok, tooLarge, phase:'check', swapped, m, n, half, nums1, nums2 });
+
+    if (ok) {
+      const isOdd = (m + n) % 2 === 1;
+      const median = isOdd
+        ? Math.max(maxLeft1, maxLeft2)
+        : (Math.max(maxLeft1, maxLeft2) + Math.min(minRight1, minRight2)) / 2;
+      st.push({ lo, hi, i, j, maxLeft1, minRight1, maxLeft2, minRight2, ok:true, median, isOdd, phase:'found', swapped, m, n, half, nums1, nums2 });
+      break;
+    } else if (tooLarge) {
+      hi = i - 1;
+      st.push({ lo, hi, i, j, phase:'adjust', dir:'left', swapped, m, n, half, nums1, nums2 });
+    } else {
+      lo = i + 1;
+      st.push({ lo, hi, i, j, phase:'adjust', dir:'right', swapped, m, n, half, nums1, nums2 });
+    }
+  }
+  return st;
+}
+
+// ══════════════════════════════════════════
+//  Draw
+// ══════════════════════════════════════════
+function draw() {
+  const canvas = document.getElementById('vizCanvas');
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.parentElement.clientWidth - 4;
+  const H = 280;
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+
+  if (!steps.length) return;
+  const s = steps[stepIdx];
+
+  const { nums1, nums2, m, n } = s;
+  const total = m + n;
+  const cellW = Math.min(52, (W - 100) / Math.max(total + 2, 6));
+  const cellH = 36;
+  const pad   = 16;
+
+  // ── Row Y positions
+  const y1 = 52, y2 = 130, yMerge = 220;
+
+  // ── Draw helper: one array row
+  function drawRow(arr, yTop, label, iCut, highlightLeft, highlightRight) {
+    // label
+    ctx.font = 'bold 11px JetBrains Mono, monospace';
+    ctx.fillStyle = '#8b949e';
+    ctx.textAlign = 'left';
+    ctx.fillText(label, pad, yTop - 8);
+
+    const startX = pad + 50;
+    arr.forEach((v, k) => {
+      const x = startX + k * cellW;
+      const inLeft  = k < iCut;
+      const inRight = k >= iCut;
+
+      // cell bg
+      ctx.fillStyle = iCut < 0 ? 'rgba(255,255,255,.04)'
+                    : inLeft  ? 'rgba(88,166,255,.13)'
+                    :           'rgba(63,185,80,.1)';
+      ctx.strokeStyle = iCut < 0 ? '#30363d'
+                      : inLeft  ? '#58a6ff'
+                      :           '#3fb950';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.roundRect(x+2, yTop, cellW-4, cellH, 5);
+      ctx.fill(); ctx.stroke();
+
+      // value
+      ctx.font = `bold ${cellW > 38 ? 14 : 11}px JetBrains Mono, monospace`;
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#e6edf3';
+      ctx.fillText(v, x + cellW/2, yTop + cellH/2 + 5);
+
+      // index
+      ctx.font = '9px JetBrains Mono, monospace';
+      ctx.fillStyle = '#444';
+      ctx.fillText(k, x + cellW/2, yTop + cellH + 12);
+    });
+
+    // cut line
+    if (iCut >= 0 && iCut <= arr.length) {
+      const cx = startX + iCut * cellW;
+      ctx.beginPath();
+      ctx.moveTo(cx, yTop - 4);
+      ctx.lineTo(cx, yTop + cellH + 4);
+      ctx.strokeStyle = '#f7c948';
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([4, 3]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // cut label
+      ctx.font = 'bold 10px JetBrains Mono, monospace';
+      ctx.fillStyle = '#f7c948';
+      ctx.textAlign = 'center';
+      ctx.fillText('i='+iCut, cx, yTop - 14);
+    }
+
+    // boundary labels: maxLeft and minRight
+    if (iCut > 0 && iCut <= arr.length) {
+      const lx = startX + (iCut - 1) * cellW + cellW/2;
+      ctx.font = '9px JetBrains Mono, monospace';
+      ctx.fillStyle = '#58a6ff';
+      ctx.textAlign = 'center';
+      ctx.fillText('maxL', lx, yTop + cellH + 23);
+    }
+    if (iCut >= 0 && iCut < arr.length) {
+      const rx = startX + iCut * cellW + cellW/2;
+      ctx.font = '9px JetBrains Mono, monospace';
+      ctx.fillStyle = '#3fb950';
+      ctx.textAlign = 'center';
+      ctx.fillText('minR', rx, yTop + cellH + 23);
+    }
+  }
+
+  const iCut = (s.phase === 'init') ? -1 : s.i;
+  const jCut = (s.phase === 'init') ? -1 : s.j;
+
+  drawRow(nums1, y1, 'nums1', iCut, true, true);
+  drawRow(nums2, y2, 'nums2', jCut, true, true);
+
+  // ── "half" label
+  if (s.phase !== 'init') {
+    ctx.font = '11px JetBrains Mono, monospace';
+    ctx.fillStyle = '#8b949e';
+    ctx.textAlign = 'right';
+    const rx = W - pad;
+    ctx.fillText(`half = ${s.half}`, rx, y1 - 8);
+    ctx.fillText(`lo=${s.lo}  hi=${s.hi}`, rx, y2 - 8);
+  }
+
+  // ── Condition boxes
+  if (s.phase === 'check' || s.phase === 'found') {
+    const bw = (W - 2*pad - 8) / 2;
+    const bh = 32;
+    const bx1 = pad, bx2 = pad + bw + 8;
+    const by  = yMerge - 10;
+
+    const c1ok = s.maxLeft1 <= s.minRight2;
+    const c2ok = s.maxLeft2 <= s.minRight1;
+
+    function condBox(x, y, text, ok) {
+      ctx.fillStyle = ok ? 'rgba(63,185,80,.15)' : 'rgba(248,81,73,.15)';
+      ctx.strokeStyle = ok ? '#3fb950' : '#f85149';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.roundRect(x, y, bw, bh, 6); ctx.fill(); ctx.stroke();
+      ctx.font = '11px JetBrains Mono, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = ok ? '#3fb950' : '#f85149';
+      ctx.fillText((ok ? '✓  ' : '✗  ') + text, x + bw/2, y + bh/2 + 4);
+    }
+
+    const ml1 = s.maxLeft1  ===  Infinity ? '+∞' : s.maxLeft1  === -Infinity ? '-∞' : s.maxLeft1;
+    const mr1 = s.minRight1 ===  Infinity ? '+∞' : s.minRight1 === -Infinity ? '-∞' : s.minRight1;
+    const ml2 = s.maxLeft2  ===  Infinity ? '+∞' : s.maxLeft2  === -Infinity ? '-∞' : s.maxLeft2;
+    const mr2 = s.minRight2 ===  Infinity ? '+∞' : s.minRight2 === -Infinity ? '-∞' : s.minRight2;
+
+    condBox(bx1, by, `maxLeft1(${ml1}) ≤ minRight2(${mr2})`, c1ok);
+    condBox(bx2, by, `maxLeft2(${ml2}) ≤ minRight1(${mr1})`, c2ok);
+
+    // median box
+    if (s.phase === 'found') {
+      ctx.fillStyle = 'rgba(247,201,72,.18)';
+      ctx.strokeStyle = '#f7c948';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.roundRect(pad, by + bh + 10, W - 2*pad, 34, 8); ctx.fill(); ctx.stroke();
+      ctx.font = 'bold 14px JetBrains Mono, monospace';
+      ctx.fillStyle = '#f7c948';
+      ctx.textAlign = 'center';
+      const medStr = Number.isInteger(s.median) ? s.median.toString() : s.median.toFixed(5);
+      ctx.fillText(`中位数 = ${medStr}`, W/2, by + bh + 10 + 22);
+    }
+  }
+}
+
+// ══════════════════════════════════════════
+//  Step description
+// ══════════════════════════════════════════
+function buildDesc() {
+  const el = document.getElementById('stepDesc');
+  if (!steps.length) { el.innerHTML = ''; return; }
+  const s = steps[stepIdx];
+  const lines = [];
+
+  if (s.phase === 'init') {
+    lines.push(`<span class="sd-tag tag-y">初始化</span>` +
+      `nums1(长度${s.m}) / nums2(长度${s.n})，total=${s.m+s.n}，` +
+      `<code>half = (${s.m+s.n}+1)/2 = ${s.half}</code>（左半应有 ${s.half} 个元素）`);
+    lines.push(`<code>lo=0, hi=${s.m}</code>，在 nums1 上二分切割位置 i（0 到 ${s.m}）`);
+    if (s.swapped) lines.push(`<span class="hi-y">注：nums1/nums2 已互换（取较短数组做二分）</span>`);
+
+  } else if (s.phase === 'check') {
+    const ml1 = s.maxLeft1  ===  Infinity ? '+∞' : s.maxLeft1  === -Infinity ? '-∞' : s.maxLeft1;
+    const mr1 = s.minRight1 ===  Infinity ? '+∞' : s.minRight1 === -Infinity ? '-∞' : s.minRight1;
+    const ml2 = s.maxLeft2  ===  Infinity ? '+∞' : s.maxLeft2  === -Infinity ? '-∞' : s.maxLeft2;
+    const mr2 = s.minRight2 ===  Infinity ? '+∞' : s.minRight2 === -Infinity ? '-∞' : s.minRight2;
+    lines.push(`<span class="sd-tag tag-b">检查切割</span>` +
+      `<code>i=${s.i}</code>（nums1 左半取 ${s.i} 个），<code>j=${s.j}</code>（nums2 左半取 ${s.j} 个）`);
+    lines.push(`边界值：<span class="hi-b">maxLeft1=${ml1}</span>  <span class="hi-g">minRight1=${mr1}</span>  ` +
+               `<span class="hi-b">maxLeft2=${ml2}</span>  <span class="hi-g">minRight2=${mr2}</span>`);
+    if (s.ok) {
+      lines.push(`<span class="hi-g">两个条件都满足 ✓  切割合法！</span>`);
+    } else if (s.tooLarge) {
+      lines.push(`<span class="hi-r">maxLeft1(${ml1}) > minRight2(${mr2})  →  i 太大，令 hi = i-1 = ${s.i-1}</span>`);
+    } else {
+      lines.push(`<span class="hi-r">maxLeft2(${ml2}) > minRight1(${mr1})  →  i 太小，令 lo = i+1 = ${s.i+1}</span>`);
+    }
+
+  } else if (s.phase === 'adjust') {
+    lines.push(`<span class="sd-tag tag-r">调整范围</span>` +
+      `i ${s.dir === 'left' ? '太大，向左缩' : '太小，向右扩'}：` +
+      `<code>lo=${s.lo}, hi=${s.hi}</code>，新 i = ${s.lo + Math.floor((s.hi - s.lo)/2)}`);
+
+  } else if (s.phase === 'found') {
+    const ml1 = s.maxLeft1  === -Infinity ? '-∞' : s.maxLeft1;
+    const mr1 = s.minRight1 ===  Infinity ? '+∞' : s.minRight1;
+    const ml2 = s.maxLeft2  === -Infinity ? '-∞' : s.maxLeft2;
+    const mr2 = s.minRight2 ===  Infinity ? '+∞' : s.minRight2;
+    const medStr = Number.isInteger(s.median) ? s.median : s.median.toFixed(5);
+    lines.push(`<span class="sd-tag tag-g">找到！</span>切割合法，直接从边界算中位数`);
+    if (s.isOdd) {
+      lines.push(`总长度奇数 → <code>median = max(maxLeft1, maxLeft2) = max(${ml1}, ${ml2}) = <span class="hi-y">${medStr}</span></code>`);
+    } else {
+      lines.push(`总长度偶数 → <code>median = (max(${ml1},${ml2}) + min(${mr1},${mr2})) / 2 = <span class="hi-y">${medStr}</span></code>`);
+    }
+  }
+
+  el.innerHTML = lines.map(l => `<div class="sd-line">${l}</div>`).join('');
+}
+
+// ══════════════════════════════════════════
+//  UI
+// ══════════════════════════════════════════
+function updateUI() {
+  const total = steps.length;
+  document.getElementById('progLabel').textContent = total ? `${stepIdx+1} / ${total}` : '— / —';
+  document.getElementById('prevBtn').disabled = stepIdx <= 0;
+  document.getElementById('nextBtn').disabled = !total || stepIdx >= total - 1;
+  document.getElementById('playBtn').disabled = !total || stepIdx >= total - 1;
+  buildDesc();
+  draw();
+}
+
+function doStep(d) {
+  if (playTimer) { clearInterval(playTimer); playTimer = null; }
+  stepIdx = Math.max(0, Math.min(steps.length - 1, stepIdx + d));
+  updateUI();
+}
+
+function doReset() {
+  if (playTimer) { clearInterval(playTimer); playTimer = null; }
+  stepIdx = 0;
+  updateUI();
+}
+
+function startPlay() {
+  if (playTimer) { clearInterval(playTimer); playTimer = null; return; }
+  if (!steps.length || stepIdx >= steps.length - 1) { stepIdx = 0; updateUI(); }
+  playTimer = setInterval(() => {
+    stepIdx++;
+    updateUI();
+    if (stepIdx >= steps.length - 1) { clearInterval(playTimer); playTimer = null; }
+  }, 1100);
+}
+
+function loadCase(idx) {
+  if (playTimer) { clearInterval(playTimer); playTimer = null; }
+  caseIdx = idx;
+  const c = CASES[idx];
+  steps   = buildSteps(c.a, c.b);
+  stepIdx = 0;
+  document.querySelectorAll('.ctrl-row:first-child .cbtn').forEach((b,i) => {
+    b.classList.toggle('sel', i === idx);
+  });
+  updateUI();
+}
+
+function showTab(idx) {
+  document.querySelectorAll('pre.tab').forEach((p,i) => p.classList.toggle('active', i===idx));
+  document.querySelectorAll('.code-tab').forEach((t,i) => t.classList.toggle('active', i===idx));
+}
+
+window.addEventListener('load', () => loadCase(0));
+window.addEventListener('resize', () => draw());
+</script>
+</body>
+</html>

@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>124. 二叉树中的最大路径和 — 图解</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Serif+SC:wght@400;700;900&display=swap');
+
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --accent: #f7c948;
+      --accent2: #58a6ff;
+      --accent3: #3fb950;
+      --danger: #f85149;
+      --muted: #8b949e;
+      --text: #e6edf3;
+      --code-bg: #1f2937;
+      --purple: #d2a8ff;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Noto Serif SC', serif;
+      min-height: 100vh;
+      padding: 48px 24px 80px;
+    }
+
+    .page { max-width: 920px; margin: 0 auto; }
+
+    /* ── Header ── */
+    header {
+      border-left: 5px solid var(--accent);
+      padding-left: 20px;
+      margin-bottom: 48px;
+    }
+    header .tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px; color: var(--accent); letter-spacing: 3px;
+      text-transform: uppercase; margin-bottom: 8px;
+    }
+    header h1 { font-size: 36px; font-weight: 900; line-height: 1.2; }
+    header p  { color: var(--muted); margin-top: 10px; font-size: 15px; line-height: 1.75; }
+
+    /* ── Section title ── */
+    .section-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; letter-spacing: 4px; text-transform: uppercase;
+      color: var(--accent); margin-bottom: 16px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    /* ── Concept cards ── */
+    .concept-row {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 16px; margin-bottom: 36px;
+    }
+    @media (max-width: 600px) { .concept-row { grid-template-columns: 1fr; } }
+    .concept-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 22px 24px;
+    }
+    .badge {
+      font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 2px;
+      padding: 3px 10px; border-radius: 20px; margin-bottom: 12px; display: inline-block;
+    }
+    .badge-blue  { background: rgba(88,166,255,.12); color: var(--accent2); border: 1px solid rgba(88,166,255,.35); }
+    .badge-green { background: rgba(63,185,80,.12);  color: var(--accent3); border: 1px solid rgba(63,185,80,.35); }
+    .concept-card h4 { font-size: 15px; margin-bottom: 10px; }
+    .concept-card p  { font-size: 13.5px; color: var(--muted); line-height: 1.85; }
+    .formula-sm {
+      font-family: 'JetBrains Mono', monospace; background: var(--code-bg);
+      border-radius: 6px; padding: 10px 14px; margin-top: 12px;
+      font-size: 12px; color: var(--accent); line-height: 1.75; white-space: pre;
+    }
+
+    /* ── Viz wrapper ── */
+    .viz-wrapper {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 28px; margin-bottom: 36px;
+    }
+    .example-selector { margin-bottom: 14px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .example-selector label { font-size: 13px; color: var(--muted); }
+    .example-selector button {
+      font-family: 'JetBrains Mono', monospace; font-size: 12px;
+      background: var(--code-bg); color: var(--text);
+      border: 1px solid var(--border); border-radius: 6px;
+      padding: 6px 14px; cursor: pointer; transition: border-color .2s, color .2s;
+    }
+    .example-selector button:hover,
+    .example-selector button.active { border-color: var(--accent); color: var(--accent); }
+
+    /* legend */
+    .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+    .legend-item { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); }
+    .legend-dot { width: 13px; height: 13px; border-radius: 50%; border: 2.5px solid; flex-shrink: 0; }
+
+    /* viz body grid */
+    .viz-body { display: grid; grid-template-columns: 1fr 270px; gap: 24px; align-items: start; }
+    @media (max-width: 700px) { .viz-body { grid-template-columns: 1fr; } }
+
+    #tree-svg-container {
+      background: var(--code-bg); border-radius: 10px; padding: 12px;
+      display: flex; justify-content: center;
+    }
+    #tree-svg { width: 100%; height: auto; display: block; }
+
+    /* SVG node / edge styles (applied via JS attributes) */
+    .node-text {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700; fill: #e6edf3;
+      text-anchor: middle; dominant-baseline: central; pointer-events: none;
+    }
+    .gain-text {
+      font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      fill: #3fb950; text-anchor: middle; dominant-baseline: central; pointer-events: none;
+    }
+
+    /* Info panel */
+    .info-panel { display: flex; flex-direction: column; gap: 12px; }
+    .info-box {
+      background: var(--code-bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px 16px;
+    }
+    .info-label {
+      font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--muted);
+      letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px;
+    }
+    .info-val {
+      font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700;
+      color: var(--accent); transition: color .3s;
+    }
+    .info-val.flash { color: var(--accent3); }
+    .info-formula-box {
+      background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px;
+      padding: 12px 16px; font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px; color: var(--muted); line-height: 1.85; white-space: pre-wrap;
+    }
+
+    /* log */
+    #log-box {
+      margin-top: 14px; background: var(--code-bg); border-left: 3px solid var(--border);
+      border-radius: 8px; padding: 14px 18px; font-size: 13.5px; color: var(--muted);
+      line-height: 1.75; min-height: 90px; transition: border-color .3s; white-space: pre-line;
+    }
+    #log-box.t-start { border-color: var(--accent2); color: var(--text); }
+    #log-box.t-leaf  { border-color: var(--accent3); color: var(--text); }
+    #log-box.t-inner { border-color: var(--accent);  color: var(--text); }
+    #log-box.t-done  { border-color: var(--purple);  color: var(--text); }
+
+    /* controls */
+    .controls { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+    .btn {
+      font-family: 'JetBrains Mono', monospace; font-size: 13px;
+      padding: 10px 24px; border-radius: 8px; border: none; cursor: pointer;
+      font-weight: 700; transition: opacity .2s, transform .1s;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn-primary { background: var(--accent); color: #000; }
+    .btn-ghost   { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    .btn:disabled { opacity: .35; cursor: not-allowed; }
+
+    .result-banner {
+      display: none; margin-top: 14px;
+      background: linear-gradient(135deg, #0d1a2e, #1a1030);
+      border: 1px solid var(--purple); border-radius: 10px;
+      padding: 14px 20px; font-family: 'JetBrains Mono', monospace;
+      font-size: 14px; color: var(--purple); animation: pop .4s ease;
+    }
+    @keyframes pop { 0%{transform:scale(.95);opacity:0} 100%{transform:scale(1);opacity:1} }
+
+    /* ── Code block ── */
+    .code-block {
+      background: var(--code-bg); border: 1px solid var(--border);
+      border-radius: 12px; padding: 24px 28px; margin-bottom: 36px; overflow-x: auto;
+    }
+    .code-block pre { font-family: 'JetBrains Mono', monospace; font-size: 13.5px; line-height: 2.1; }
+    .kw  { color: #ff7b72; }
+    .fn  { color: var(--accent2); }
+    .num { color: #79c0ff; }
+    .cm  { color: var(--muted); font-style: italic; }
+    .hl  { background: rgba(247,201,72,.13); border-radius: 4px; padding: 0 4px; }
+    .hl2 { background: rgba(63,185,80,.13);  border-radius: 4px; padding: 0 4px; }
+
+    /* ── Complexity ── */
+    .complexity-row { display: flex; gap: 16px; margin-bottom: 36px; flex-wrap: wrap; }
+    .complexity-card {
+      flex: 1; min-width: 160px; border: 1px solid var(--border);
+      border-radius: 10px; padding: 20px 22px; background: var(--surface);
+    }
+    .complexity-card .clabel { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .complexity-card .cvalue { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700; color: var(--accent3); }
+    .complexity-card .cdesc  { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ── Header ── -->
+  <header>
+    <div class="tag">LeetCode 124 · 困难</div>
+    <h1>二叉树中的最大路径和</h1>
+    <p>路径可以从树中任意节点出发，到任意节点结束，不能重复经过同一节点。<br>
+       核心思路：<strong>后序 DFS</strong> — 每个节点计算「单侧贡献值」，同时用「穿越路径」刷新全局最大值。</p>
+  </header>
+
+  <!-- ── 两个核心概念 ── -->
+  <div class="section-title">两个核心概念</div>
+  <div class="concept-row">
+    <div class="concept-card">
+      <div class="badge badge-blue">向上返回 · 只选一侧</div>
+      <h4>① 单侧贡献值</h4>
+      <p>以当前节点为起点，<strong>只选左或右一侧</strong>向下延伸的最大路径和。<br>
+         必须单侧，因为父节点还要继续往上拼接，路径不能分叉。<br>
+         若子树贡献为负，直接取 0（相当于不走那条路）。</p>
+      <div class="formula-sm">gain(node) = node.val
+  + max(gain(left), gain(right), 0)</div>
+    </div>
+    <div class="concept-card">
+      <div class="badge badge-green">更新答案 · 不向上返回</div>
+      <h4>② 穿越当前节点的路径</h4>
+      <p>以当前节点为「拱顶」，<strong>左弧 + 节点 + 右弧</strong>，形成完整路径。<br>
+         此值仅用于刷新全局最大值。<strong>不能</strong>向父节点返回，<br>
+         因为返回了就变成"分叉路径"，不合法。</p>
+      <div class="formula-sm">pathThrough =
+  leftGain + node.val + rightGain
+→ maxSum = max(maxSum, pathThrough)</div>
+    </div>
+  </div>
+
+  <!-- ── 逐步演示 ── -->
+  <div class="section-title">逐步演示</div>
+  <div class="viz-wrapper">
+
+    <div class="example-selector">
+      <label>选择示例：</label>
+      <button class="active" onclick="selectEx(0,this)">[1,2,3]  →  答案 6</button>
+      <button onclick="selectEx(1,this)">[-10,9,20,null,null,15,7]  →  答案 42</button>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-dot" style="border-color:#f7c948;background:#2a2010"></div>当前处理
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="border-color:#58a6ff;background:#1c2a3a"></div>等待中（祖先节点）
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="border-color:#3fb950;background:#0d2214"></div>已计算（贡献值已知）
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="border-color:#d2a8ff;background:#1a1a2e"></div>最优路径
+      </div>
+    </div>
+
+    <div class="viz-body">
+      <!-- Left: tree + log -->
+      <div>
+        <div id="tree-svg-container">
+          <svg id="tree-svg" viewBox="0 0 360 220"></svg>
+        </div>
+        <div id="log-box">点击「下一步」开始演示 →</div>
+        <div class="result-banner" id="result-banner"></div>
+        <div class="controls">
+          <button class="btn btn-ghost"  id="btn-prev" onclick="stepBack()" disabled>← 上一步</button>
+          <button class="btn btn-primary" id="btn-next" onclick="stepForward()">下一步 →</button>
+          <button class="btn btn-ghost" onclick="resetViz()">重置</button>
+          <button class="btn btn-ghost" id="btn-auto" onclick="toggleAuto()">自动播放</button>
+        </div>
+      </div>
+
+      <!-- Right: info panel -->
+      <div class="info-panel">
+        <div class="info-box">
+          <div class="info-label">全局最大路径和</div>
+          <div class="info-val" id="info-maxsum">—</div>
+        </div>
+        <div class="info-box">
+          <div class="info-label">当前处理节点</div>
+          <div class="info-val" id="info-curnode">—</div>
+        </div>
+        <div class="info-formula-box" id="info-formula">等待开始...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 代码 ── -->
+  <div class="section-title">Java 实现</div>
+  <div class="code-block"><pre>
+<span class="kw">private int</span> maxSum = Integer.MIN_VALUE;  <span class="cm">// 全局最大值，初始化为最小整数</span>
+
+<span class="kw">public int</span> <span class="fn">maxPathSum</span>(TreeNode root) {
+    <span class="fn">dfs</span>(root);
+    <span class="kw">return</span> maxSum;
+}
+
+<span class="kw">private int</span> <span class="fn">dfs</span>(TreeNode node) {
+    <span class="kw">if</span> (node == <span class="kw">null</span>) <span class="kw">return</span> <span class="num">0</span>;
+
+    <span class="cm">// ① 递归求左右子树的单侧贡献值，负贡献直接取 0（不走）</span>
+    <span class="hl"><span class="kw">int</span> leftGain  = Math.<span class="fn">max</span>(<span class="fn">dfs</span>(node.left),  <span class="num">0</span>);</span>
+    <span class="hl"><span class="kw">int</span> rightGain = Math.<span class="fn">max</span>(<span class="fn">dfs</span>(node.right), <span class="num">0</span>);</span>
+
+    <span class="cm">// ② 穿越当前节点的完整弧线路径，仅用于刷新全局答案，不向上传递</span>
+    <span class="hl2"><span class="kw">int</span> pathThrough = leftGain + node.val + rightGain;</span>
+    <span class="hl2">maxSum = Math.<span class="fn">max</span>(maxSum, pathThrough);</span>
+
+    <span class="cm">// 向父节点只能返回单侧最大贡献（只能选左或右一边）</span>
+    <span class="kw">return</span> node.val + Math.<span class="fn">max</span>(leftGain, rightGain);
+}</pre>
+  </div>
+
+  <!-- ── 复杂度 ── -->
+  <div class="section-title">复杂度分析</div>
+  <div class="complexity-row">
+    <div class="complexity-card">
+      <div class="clabel">时间复杂度</div>
+      <div class="cvalue">O(n)</div>
+      <div class="cdesc">每个节点恰好访问一次</div>
+    </div>
+    <div class="complexity-card">
+      <div class="clabel">空间复杂度</div>
+      <div class="cvalue">O(h)</div>
+      <div class="cdesc">递归栈深度 h，最坏退化为 O(n)</div>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// Node/Edge visual state → inline SVG attribute values
+// ═══════════════════════════════════════════════════════════
+const N_STYLE = {
+  idle:        { fill: '#1f2937', stroke: '#30363d', sw: 2   },
+  pending:     { fill: '#1c2a3a', stroke: '#58a6ff', sw: 2.5 },
+  current:     { fill: '#2a2010', stroke: '#f7c948', sw: 3   },
+  computed:    { fill: '#0d2214', stroke: '#3fb950', sw: 2.5 },
+  'best-path': { fill: '#1a1a2e', stroke: '#d2a8ff', sw: 3   },
+};
+const E_STYLE = {
+  idle:        { stroke: '#30363d', sw: 2,   dash: ''    },
+  traversing:  { stroke: '#58a6ff', sw: 2.5, dash: '6 3' },
+  computed:    { stroke: '#3fb950', sw: 2.5, dash: ''    },
+  'best-path': { stroke: '#d2a8ff', sw: 3.5, dash: ''    },
+};
+
+// ═══════════════════════════════════════════════════════════
+// Example data
+// ═══════════════════════════════════════════════════════════
+const EXAMPLES = [
+
+  /* ── Example 1: [1, 2, 3]  answer=6 ── */
+  {
+    viewBox: '0 0 360 210',
+    answer: 6,
+    nodes: [
+      { id: 0, val:  1, x: 180, y: 65  },
+      { id: 1, val:  2, x:  80, y: 160 },
+      { id: 2, val:  3, x: 280, y: 160 },
+    ],
+    edges: [
+      { id: '0-1', from: 0, to: 1 },
+      { id: '0-2', from: 0, to: 2 },
+    ],
+    steps: [
+      {
+        ns: { 0:'idle', 1:'idle', 2:'idle' },
+        es: { '0-1':'idle', '0-2':'idle' },
+        gains: {}, maxSum: null, curNode: null,
+        formula: '等待开始...',
+        log: '点击「下一步」开始演示 →', lt: '',
+      },
+      {
+        ns: { 0:'pending', 1:'current', 2:'idle' },
+        es: { '0-1':'traversing', '0-2':'idle' },
+        gains: {}, maxSum: null, curNode: 2,
+        formula: '调用 dfs(节点2)\n后序遍历：先处理左子树',
+        log: '从根节点 1 出发，先递归左子树\n→ 访问叶节点 2', lt: 'start',
+      },
+      {
+        ns: { 0:'pending', 1:'computed', 2:'idle' },
+        es: { '0-1':'computed', '0-2':'idle' },
+        gains: { 1: '贡献=2' }, maxSum: 2, curNode: 2,
+        formula: 'leftGain  = max(dfs(null), 0) = 0\nrightGain = max(dfs(null), 0) = 0\n\npathThrough = 0+2+0 = 2\n→ maxSum 更新为 2\n\n返回单侧贡献 = 2+max(0,0) = 2',
+        log: '节点 2 是叶节点\n  leftGain=0, rightGain=0\n  穿越路径 = 0+2+0 = 2  →  更新 maxSum=2\n  向上返回单侧贡献 = 2', lt: 'leaf',
+      },
+      {
+        ns: { 0:'pending', 1:'computed', 2:'current' },
+        es: { '0-1':'computed', '0-2':'traversing' },
+        gains: { 1: '贡献=2' }, maxSum: 2, curNode: 3,
+        formula: '调用 dfs(节点3)\n再处理根节点的右子树',
+        log: '回到节点 1，再递归右子树\n→ 访问叶节点 3', lt: 'start',
+      },
+      {
+        ns: { 0:'pending', 1:'computed', 2:'computed' },
+        es: { '0-1':'computed', '0-2':'computed' },
+        gains: { 1: '贡献=2', 2: '贡献=3' }, maxSum: 3, curNode: 3,
+        formula: 'leftGain  = max(dfs(null), 0) = 0\nrightGain = max(dfs(null), 0) = 0\n\npathThrough = 0+3+0 = 3\n→ maxSum 更新为 3\n\n返回单侧贡献 = 3+max(0,0) = 3',
+        log: '节点 3 是叶节点\n  leftGain=0, rightGain=0\n  穿越路径 = 0+3+0 = 3  →  更新 maxSum=3\n  向上返回单侧贡献 = 3', lt: 'leaf',
+      },
+      {
+        ns: { 0:'current', 1:'best-path', 2:'best-path' },
+        es: { '0-1':'best-path', '0-2':'best-path' },
+        gains: { 0:'贡献=4', 1: '贡献=2', 2: '贡献=3' }, maxSum: 6, curNode: 1,
+        formula: 'leftGain  = max(gain(节点2), 0) = 2\nrightGain = max(gain(节点3), 0) = 3\n\npathThrough = 2+1+3 = 6  ← 新的最大值!\n→ maxSum 更新为 6\n\n返回单侧贡献 = 1+max(2,3) = 4',
+        log: '回到根节点 1\n  leftGain=2（节点2），rightGain=3（节点3）\n  穿越路径 = 2+1+3 = 6  ←  新的最大值！\n  向上返回单侧贡献 = 1+max(2,3) = 4（只取右侧）', lt: 'inner',
+      },
+      {
+        ns: { 0:'best-path', 1:'best-path', 2:'best-path' },
+        es: { '0-1':'best-path', '0-2':'best-path' },
+        gains: { 0:'贡献=4', 1: '贡献=2', 2: '贡献=3' }, maxSum: 6, curNode: null,
+        formula: '最优路径：2 → 1 → 3\n路径和 = 2 + 1 + 3 = 6',
+        log: '遍历完成！最大路径和 = 6\n最优路径：节点2 → 节点1 → 节点3', lt: 'done',
+      },
+    ],
+  },
+
+  /* ── Example 2: [-10,9,20,null,null,15,7]  answer=42 ── */
+  {
+    viewBox: '0 0 450 300',
+    answer: 42,
+    nodes: [
+      { id: 0, val: -10, x: 225, y: 55  },
+      { id: 1, val:   9, x:  95, y: 150 },
+      { id: 2, val:  20, x: 355, y: 150 },
+      { id: 3, val:  15, x: 270, y: 250 },
+      { id: 4, val:   7, x: 415, y: 250 },
+    ],
+    edges: [
+      { id: '0-1', from: 0, to: 1 },
+      { id: '0-2', from: 0, to: 2 },
+      { id: '2-3', from: 2, to: 3 },
+      { id: '2-4', from: 2, to: 4 },
+    ],
+    steps: [
+      {
+        ns: { 0:'idle', 1:'idle', 2:'idle', 3:'idle', 4:'idle' },
+        es: { '0-1':'idle', '0-2':'idle', '2-3':'idle', '2-4':'idle' },
+        gains: {}, maxSum: null, curNode: null,
+        formula: '等待开始...',
+        log: '点击「下一步」开始演示 →', lt: '',
+      },
+      {
+        ns: { 0:'pending', 1:'current', 2:'idle', 3:'idle', 4:'idle' },
+        es: { '0-1':'traversing', '0-2':'idle', '2-3':'idle', '2-4':'idle' },
+        gains: {}, maxSum: null, curNode: 9,
+        formula: '调用 dfs(节点9)\n后序遍历，先访问最左叶节点',
+        log: '从根节点 -10 出发，先递归左子树\n→ 访问叶节点 9', lt: 'start',
+      },
+      {
+        ns: { 0:'pending', 1:'computed', 2:'idle', 3:'idle', 4:'idle' },
+        es: { '0-1':'computed', '0-2':'idle', '2-3':'idle', '2-4':'idle' },
+        gains: { 1: '贡献=9' }, maxSum: 9, curNode: 9,
+        formula: 'leftGain=0, rightGain=0\n\npathThrough = 0+9+0 = 9\n→ maxSum 更新为 9\n\n返回单侧贡献 = 9',
+        log: '节点 9 是叶节点\n  穿越路径 = 9  →  更新 maxSum=9\n  向上返回贡献值 = 9', lt: 'leaf',
+      },
+      {
+        ns: { 0:'pending', 1:'computed', 2:'pending', 3:'current', 4:'idle' },
+        es: { '0-1':'computed', '0-2':'traversing', '2-3':'traversing', '2-4':'idle' },
+        gains: { 1: '贡献=9' }, maxSum: 9, curNode: 15,
+        formula: '调用 dfs(节点20) → dfs(节点15)\n进入右子树，再访问节点20的左子节点',
+        log: '回到根，递归右子树\n→ 进入节点 20，先访问左子节点 15', lt: 'start',
+      },
+      {
+        ns: { 0:'pending', 1:'computed', 2:'pending', 3:'computed', 4:'idle' },
+        es: { '0-1':'computed', '0-2':'traversing', '2-3':'computed', '2-4':'idle' },
+        gains: { 1: '贡献=9', 3: '贡献=15' }, maxSum: 15, curNode: 15,
+        formula: 'leftGain=0, rightGain=0\n\npathThrough = 0+15+0 = 15\n→ maxSum 更新为 15\n\n返回单侧贡献 = 15',
+        log: '节点 15 是叶节点\n  穿越路径 = 15  →  更新 maxSum=15\n  向上返回贡献值 = 15', lt: 'leaf',
+      },
+      {
+        ns: { 0:'pending', 1:'computed', 2:'pending', 3:'computed', 4:'current' },
+        es: { '0-1':'computed', '0-2':'traversing', '2-3':'computed', '2-4':'traversing' },
+        gains: { 1: '贡献=9', 3: '贡献=15' }, maxSum: 15, curNode: 7,
+        formula: '调用 dfs(节点7)\n节点20的右子节点',
+        log: '回到节点 20，再递归右子树\n→ 访问叶节点 7', lt: 'start',
+      },
+      {
+        ns: { 0:'pending', 1:'computed', 2:'pending', 3:'computed', 4:'computed' },
+        es: { '0-1':'computed', '0-2':'traversing', '2-3':'computed', '2-4':'computed' },
+        gains: { 1: '贡献=9', 3: '贡献=15', 4: '贡献=7' }, maxSum: 15, curNode: 7,
+        formula: 'leftGain=0, rightGain=0\n\npathThrough = 0+7+0 = 7\n不更新 maxSum（7 < 15）\n\n返回单侧贡献 = 7',
+        log: '节点 7 是叶节点\n  穿越路径 = 7，不更新 maxSum（7 < 15）\n  向上返回贡献值 = 7', lt: 'leaf',
+      },
+      {
+        ns: { 0:'pending', 1:'computed', 2:'current', 3:'best-path', 4:'best-path' },
+        es: { '0-1':'computed', '0-2':'traversing', '2-3':'best-path', '2-4':'best-path' },
+        gains: { 1: '贡献=9', 2: '贡献=35', 3: '贡献=15', 4: '贡献=7' }, maxSum: 42, curNode: 20,
+        formula: 'leftGain  = max(gain(节点15), 0) = 15\nrightGain = max(gain(节点7),  0) = 7\n\npathThrough = 15+20+7 = 42  ← 新的最大值!\n→ maxSum 更新为 42\n\n返回单侧贡献 = 20+max(15,7) = 35',
+        log: '回到节点 20\n  leftGain=15（节点15），rightGain=7（节点7）\n  穿越路径 = 15+20+7 = 42  ←  新的最大值！\n  向上返回单侧贡献 = 20+15 = 35（取左侧）', lt: 'inner',
+      },
+      {
+        ns: { 0:'current', 1:'computed', 2:'best-path', 3:'best-path', 4:'best-path' },
+        es: { '0-1':'computed', '0-2':'best-path', '2-3':'best-path', '2-4':'best-path' },
+        gains: { 1: '贡献=9', 2: '贡献=35', 3: '贡献=15', 4: '贡献=7' }, maxSum: 42, curNode: -10,
+        formula: 'leftGain  = max(gain(节点9),  0) = 9\nrightGain = max(gain(节点20), 0) = 35\n\npathThrough = 9+(-10)+35 = 34\n不更新 maxSum（34 < 42）\n\n返回单侧贡献 = -10+max(9,35) = 25',
+        log: '回到根节点 -10\n  leftGain=9（节点9），rightGain=35（节点20的贡献）\n  穿越路径 = 9+(-10)+35 = 34，不更新 maxSum（34<42）\n  向上返回单侧贡献 = -10+35 = 25', lt: 'inner',
+      },
+      {
+        ns: { 0:'computed', 1:'computed', 2:'best-path', 3:'best-path', 4:'best-path' },
+        es: { '0-1':'computed', '0-2':'best-path', '2-3':'best-path', '2-4':'best-path' },
+        gains: { 1: '贡献=9', 2: '贡献=35', 3: '贡献=15', 4: '贡献=7' }, maxSum: 42, curNode: null,
+        formula: '最优路径：15 → 20 → 7\n路径和 = 15 + 20 + 7 = 42',
+        log: '遍历完成！最大路径和 = 42\n最优路径：节点15 → 节点20 → 节点7', lt: 'done',
+      },
+    ],
+  },
+];
+
+// ═══════════════════════════════════════════════════════════
+// State
+// ═══════════════════════════════════════════════════════════
+let exIdx    = 0;
+let stepIdx  = 0;
+let autoTimer = null;
+let prevMaxSum = null;
+
+// ═══════════════════════════════════════════════════════════
+// SVG helpers
+// ═══════════════════════════════════════════════════════════
+function svgEl(tag, attrs) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+
+function applyNodeStyle(id, state) {
+  const circle = document.getElementById(`nc-${id}`);
+  if (!circle) return;
+  const s = N_STYLE[state] || N_STYLE.idle;
+  circle.setAttribute('fill', s.fill);
+  circle.setAttribute('stroke', s.stroke);
+  circle.setAttribute('stroke-width', s.sw);
+}
+
+function applyEdgeStyle(id, state) {
+  const line = document.getElementById(`el-${id}`);
+  if (!line) return;
+  const s = E_STYLE[state] || E_STYLE.idle;
+  line.setAttribute('stroke', s.stroke);
+  line.setAttribute('stroke-width', s.sw);
+  line.setAttribute('stroke-dasharray', s.dash);
+}
+
+// ═══════════════════════════════════════════════════════════
+// Build SVG tree
+// ═══════════════════════════════════════════════════════════
+function buildTree() {
+  const ex  = EXAMPLES[exIdx];
+  const svg = document.getElementById('tree-svg');
+  svg.innerHTML = '';
+  svg.setAttribute('viewBox', ex.viewBox);
+
+  // Edges (drawn first, behind nodes)
+  for (const e of ex.edges) {
+    const fn = ex.nodes[e.from];
+    const tn = ex.nodes[e.to];
+    svg.appendChild(svgEl('line', {
+      id: `el-${e.id}`,
+      x1: fn.x, y1: fn.y, x2: tn.x, y2: tn.y,
+      stroke: '#30363d', 'stroke-width': 2,
+    }));
+  }
+
+  // Nodes
+  for (const n of ex.nodes) {
+    const g = svgEl('g', { id: `ng-${n.id}` });
+
+    // Circle
+    const circle = svgEl('circle', {
+      id: `nc-${n.id}`,
+      cx: n.x, cy: n.y, r: 24,
+      fill: '#1f2937', stroke: '#30363d', 'stroke-width': 2,
+    });
+    g.appendChild(circle);
+
+    // Value label
+    const txt = svgEl('text', { x: n.x, y: n.y, class: 'node-text' });
+    txt.setAttribute('font-size', String(n.val).length > 2 ? '11' : '14');
+    txt.textContent = n.val;
+    g.appendChild(txt);
+
+    // Gain label (below the circle, hidden by default)
+    const gain = svgEl('text', {
+      id: `gl-${n.id}`,
+      x: n.x, y: n.y + 40,
+      class: 'gain-text', opacity: 0,
+    });
+    g.appendChild(gain);
+
+    svg.appendChild(g);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// Render current step
+// ═══════════════════════════════════════════════════════════
+function renderStep() {
+  const ex   = EXAMPLES[exIdx];
+  const step = ex.steps[stepIdx];
+
+  // Node visuals
+  for (const [id, state] of Object.entries(step.ns)) applyNodeStyle(id, state);
+
+  // Edge visuals
+  for (const [id, state] of Object.entries(step.es)) applyEdgeStyle(id, state);
+
+  // Gain labels
+  for (const n of ex.nodes) {
+    const el    = document.getElementById(`gl-${n.id}`);
+    const label = step.gains[n.id];
+    if (el) {
+      el.textContent = label || '';
+      el.setAttribute('opacity', label ? 1 : 0);
+    }
+  }
+
+  // maxSum display
+  const maxEl = document.getElementById('info-maxsum');
+  if (step.maxSum === null) {
+    maxEl.textContent = '—';
+    maxEl.className   = 'info-val';
+  } else {
+    if (step.maxSum !== prevMaxSum) {
+      maxEl.className = 'info-val flash';
+      setTimeout(() => { maxEl.className = 'info-val'; }, 700);
+    }
+    maxEl.textContent = step.maxSum;
+  }
+  prevMaxSum = step.maxSum;
+
+  // curNode display
+  document.getElementById('info-curnode').textContent =
+    step.curNode !== null ? step.curNode : '—';
+
+  // Formula
+  document.getElementById('info-formula').textContent = step.formula;
+
+  // Log
+  const logEl      = document.getElementById('log-box');
+  logEl.textContent = step.log;
+  logEl.className   = step.lt ? `t-${step.lt}` : '';
+
+  // Button states + result banner
+  const isLast  = stepIdx === ex.steps.length - 1;
+  const isFirst = stepIdx === 0;
+  document.getElementById('btn-next').disabled = isLast;
+  document.getElementById('btn-prev').disabled = isFirst;
+  const banner = document.getElementById('result-banner');
+  if (isLast) {
+    banner.style.display = 'block';
+    banner.textContent   = `✓  遍历完成！最大路径和 = ${ex.answer}`;
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// Controls
+// ═══════════════════════════════════════════════════════════
+function selectEx(idx, btn) {
+  document.querySelectorAll('.example-selector button')
+          .forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  exIdx = idx; stepIdx = 0; prevMaxSum = null;
+  stopAuto();
+  buildTree();
+  renderStep();
+}
+
+function resetViz() {
+  stepIdx = 0; prevMaxSum = null;
+  stopAuto();
+  buildTree();
+  renderStep();
+}
+
+function stepForward() {
+  const ex = EXAMPLES[exIdx];
+  if (stepIdx < ex.steps.length - 1) { stepIdx++; renderStep(); }
+}
+
+function stepBack() {
+  if (stepIdx > 0) { stepIdx--; prevMaxSum = stepIdx > 0 ? EXAMPLES[exIdx].steps[stepIdx - 1].maxSum : null; renderStep(); }
+}
+
+function stopAuto() {
+  clearInterval(autoTimer);
+  autoTimer = null;
+  document.getElementById('btn-auto').textContent = '自动播放';
+}
+
+function toggleAuto() {
+  if (autoTimer) {
+    stopAuto();
+  } else {
+    document.getElementById('btn-auto').textContent = '暂停';
+    autoTimer = setInterval(() => {
+      const ex = EXAMPLES[exIdx];
+      if (stepIdx >= ex.steps.length - 1) { stopAuto(); return; }
+      stepForward();
+    }, 1400);
+  }
+}
+
+// ── Init ──
+buildTree();
+renderStep();
+</script>
+</body>
+</html>

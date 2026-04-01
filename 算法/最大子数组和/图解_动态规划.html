@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>53. 最大子数组和 — 动态规划图解</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Serif+SC:wght@400;700;900&display=swap');
+
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --accent: #f7c948;
+      --accent2: #58a6ff;
+      --accent3: #3fb950;
+      --danger: #f85149;
+      --muted: #8b949e;
+      --text: #e6edf3;
+      --code-bg: #1f2937;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Noto Serif SC', serif;
+      min-height: 100vh;
+      padding: 48px 24px 80px;
+    }
+
+    .page { max-width: 860px; margin: 0 auto; }
+
+    /* ── Header ── */
+    header {
+      border-left: 5px solid var(--accent);
+      padding-left: 20px;
+      margin-bottom: 48px;
+    }
+    header .tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--accent);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    header h1 { font-size: 36px; font-weight: 900; line-height: 1.2; }
+    header p { color: var(--muted); margin-top: 10px; font-size: 15px; line-height: 1.7; }
+
+    /* ── Section titles ── */
+    .section-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── Idea card ── */
+    .idea-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px 32px;
+      margin-bottom: 36px;
+    }
+    .idea-card h3 {
+      font-size: 18px;
+      color: var(--accent2);
+      margin-bottom: 12px;
+    }
+    .idea-card p { line-height: 1.9; color: var(--text); font-size: 15px; }
+    .idea-card .formula {
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--code-bg);
+      border-left: 3px solid var(--accent);
+      border-radius: 6px;
+      padding: 14px 20px;
+      margin: 16px 0;
+      font-size: 15px;
+      color: var(--accent);
+    }
+    .idea-card .note {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 8px;
+      padding-left: 4px;
+    }
+
+    /* ── Step-by-step visualizer ── */
+    .viz-wrapper {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px 28px 32px;
+      margin-bottom: 36px;
+    }
+
+    .array-selector { margin-bottom: 24px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .array-selector label { font-size: 13px; color: var(--muted); }
+    .array-selector button {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      background: var(--code-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 14px;
+      cursor: pointer;
+      transition: border-color .2s, color .2s;
+    }
+    .array-selector button:hover,
+    .array-selector button.active {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* array cells */
+    #array-display {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+    .cell {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .cell-idx {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+    }
+    .cell-val {
+      width: 52px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 16px;
+      font-weight: 700;
+      border-radius: 8px;
+      border: 2px solid var(--border);
+      background: var(--code-bg);
+      transition: all .35s ease;
+    }
+    .cell-val.current  { border-color: var(--accent2); background: #1c3050; color: var(--accent2); transform: translateY(-4px); }
+    .cell-val.in-max   { border-color: var(--accent3); background: #0d2e1a; color: var(--accent3); }
+    .cell-val.negative { color: var(--danger); }
+    .cell-dp {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      transition: color .35s;
+    }
+    .cell-dp.highlighted { color: var(--accent); font-weight: 700; }
+
+    /* stats row */
+    .stats-row {
+      display: flex;
+      gap: 24px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .stat-box {
+      flex: 1;
+      min-width: 140px;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 18px;
+    }
+    .stat-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .stat-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--accent);
+      transition: color .3s;
+    }
+    .stat-value.updated { color: var(--accent3); }
+
+    /* decision log */
+    #decision-log {
+      min-height: 56px;
+      background: var(--code-bg);
+      border-radius: 8px;
+      padding: 14px 18px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.7;
+      margin-bottom: 20px;
+      border-left: 3px solid var(--border);
+      transition: border-color .3s;
+    }
+    #decision-log.positive { border-color: var(--accent3); color: var(--text); }
+    #decision-log.reset    { border-color: var(--accent); color: var(--text); }
+
+    /* controls */
+    .controls { display: flex; gap: 12px; flex-wrap: wrap; }
+    .btn {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      padding: 10px 24px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-weight: 700;
+      transition: opacity .2s, transform .1s;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn-primary { background: var(--accent); color: #000; }
+    .btn-ghost   { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    .btn:disabled { opacity: .35; cursor: not-allowed; }
+
+    /* ── Code ── */
+    .code-block {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px 28px;
+      margin-bottom: 36px;
+      overflow-x: auto;
+    }
+    .code-block pre {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13.5px;
+      line-height: 2;
+      white-space: pre;
+    }
+    .kw  { color: #ff7b72; }
+    .fn  { color: var(--accent2); }
+    .num { color: #79c0ff; }
+    .cm  { color: var(--muted); font-style: italic; }
+    .hl  { background: rgba(247,201,72,.12); border-radius: 4px; padding: 0 4px; }
+
+    /* ── Complexity ── */
+    .complexity-row { display: flex; gap: 16px; margin-bottom: 36px; flex-wrap: wrap; }
+    .complexity-card {
+      flex: 1;
+      min-width: 160px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 22px;
+      background: var(--surface);
+    }
+    .complexity-card .label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .complexity-card .value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--accent3);
+    }
+    .complexity-card .desc { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+    /* legend */
+    .legend { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 18px; }
+    .legend-item { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--muted); }
+    .legend-dot {
+      width: 12px; height: 12px; border-radius: 3px;
+    }
+    .dot-current { background: var(--accent2); }
+    .dot-max     { background: var(--accent3); }
+    .dot-neg     { background: var(--danger); }
+
+    .result-banner {
+      display: none;
+      background: linear-gradient(135deg, #0d2e1a, #1a3a0d);
+      border: 1px solid var(--accent3);
+      border-radius: 10px;
+      padding: 16px 24px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 15px;
+      color: var(--accent3);
+      margin-bottom: 20px;
+      animation: pop .4s ease;
+    }
+    @keyframes pop {
+      0%   { transform: scale(.95); opacity: 0; }
+      100% { transform: scale(1);   opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ── Header ── -->
+  <header>
+    <div class="tag">LeetCode 53 · 中等</div>
+    <h1>最大子数组和</h1>
+    <p>给你一个整数数组，找出具有最大和的连续子数组，返回其最大和。<br>
+       核心思路：<strong>Kadane 算法</strong>（动态规划的空间优化版本）</p>
+  </header>
+
+  <!-- ── 核心思路 ── -->
+  <div class="section-title">核心思路</div>
+  <div class="idea-card">
+    <h3>关键问题：子数组要不要"接上"前面？</h3>
+    <p>
+      遍历到第 <code>i</code> 个元素时，我们定义 <strong>curSum</strong> = 以 <code>nums[i]</code> 结尾的子数组的最大和。
+      此时只有两种选择：
+    </p>
+    <div class="formula">dp[i] = max( nums[i],  dp[i-1] + nums[i] )</div>
+    <p>
+      — 如果前面积累的 <code>curSum &lt; 0</code>，带上它只会"拖后腿"，直接从 <code>nums[i]</code> 重新开始。<br>
+      — 如果 <code>curSum ≥ 0</code>，接上去能让和更大，继续累积。
+    </p>
+    <p class="note">整个过程只需一个变量 <code>curSum</code> 保存当前状态，另一个 <code>maxSum</code> 记录历史最大值，空间 O(1)。</p>
+  </div>
+
+  <!-- ── 互动演示 ── -->
+  <div class="section-title">逐步演示</div>
+  <div class="viz-wrapper">
+
+    <div class="array-selector">
+      <label>选择示例：</label>
+      <button class="active" onclick="selectArray(0,this)">[-2,1,-3,4,-1,2,1,-5,4] → 6</button>
+      <button onclick="selectArray(1,this)">[1] → 1</button>
+      <button onclick="selectArray(2,this)">[5,4,-1,7,8] → 23</button>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot dot-current"></div>当前指针</div>
+      <div class="legend-item"><div class="legend-dot dot-max"></div>最优子数组范围</div>
+      <div class="legend-item"><div class="legend-dot dot-neg"></div>负数</div>
+    </div>
+
+    <div id="array-display"></div>
+
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="stat-label">当前指针 i</div>
+        <div class="stat-value" id="stat-i">—</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">curSum（当前子数组和）</div>
+        <div class="stat-value" id="stat-cur">—</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">maxSum（全局最大）</div>
+        <div class="stat-value" id="stat-max">—</div>
+      </div>
+    </div>
+
+    <div id="decision-log">点击「下一步」开始演示 →</div>
+    <div class="result-banner" id="result-banner"></div>
+
+    <div class="controls">
+      <button class="btn btn-primary" id="btn-next" onclick="stepForward()">下一步 →</button>
+      <button class="btn btn-ghost"   onclick="resetViz()">重置</button>
+      <button class="btn btn-ghost"   id="btn-auto" onclick="autoPlay()">自动播放</button>
+    </div>
+  </div>
+
+  <!-- ── 代码 ── -->
+  <div class="section-title">Java 实现</div>
+  <div class="code-block"><pre>
+<span class="kw">public int</span> <span class="fn">maxSubArray</span>(<span class="kw">int</span>[] nums) {
+    <span class="kw">int</span> curSum = nums[<span class="num">0</span>];   <span class="cm">// 以当前元素结尾的子数组最大和</span>
+    <span class="kw">int</span> maxSum = nums[<span class="num">0</span>];   <span class="cm">// 全局最大值</span>
+
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">1</span>; i &lt; nums.length; i++) {
+        <span class="cm">// 核心决策：接上前面 vs 重新开始</span>
+        <span class="hl">curSum = Math.<span class="fn">max</span>(nums[i], curSum + nums[i]);</span>
+        <span class="hl">maxSum = Math.<span class="fn">max</span>(maxSum, curSum);</span>
+    }
+
+    <span class="kw">return</span> maxSum;
+}</pre>
+  </div>
+
+  <!-- ── 复杂度 ── -->
+  <div class="section-title">复杂度分析</div>
+  <div class="complexity-row">
+    <div class="complexity-card">
+      <div class="label">时间复杂度</div>
+      <div class="value">O(n)</div>
+      <div class="desc">只需遍历数组一次</div>
+    </div>
+    <div class="complexity-card">
+      <div class="label">空间复杂度</div>
+      <div class="value">O(1)</div>
+      <div class="desc">只用两个变量，无需 dp 数组</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const ARRAYS = [
+    [-2, 1, -3, 4, -1, 2, 1, -5, 4],
+    [1],
+    [5, 4, -1, 7, 8],
+  ];
+
+  let nums = [];
+  let step = -1;   // -1 = not started
+  let curSum, maxSum;
+  let dpArr = [];
+  let maxStart = 0, maxEnd = 0;
+  let tempStart = 0;
+  let autoTimer = null;
+
+  function selectArray(idx, btn) {
+    document.querySelectorAll('.array-selector button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    nums = [...ARRAYS[idx]];
+    resetViz();
+  }
+
+  function resetViz() {
+    clearInterval(autoTimer);
+    autoTimer = null;
+    document.getElementById('btn-auto').textContent = '自动播放';
+    step = -1;
+    curSum = undefined;
+    maxSum = undefined;
+    dpArr = new Array(nums.length).fill(null);
+    maxStart = 0; maxEnd = 0; tempStart = 0;
+
+    document.getElementById('stat-i').textContent = '—';
+    document.getElementById('stat-cur').textContent = '—';
+    document.getElementById('stat-max').textContent = '—';
+    document.getElementById('decision-log').textContent = '点击「下一步」开始演示 →';
+    document.getElementById('decision-log').className = '';
+    document.getElementById('result-banner').style.display = 'none';
+    document.getElementById('btn-next').disabled = false;
+
+    renderCells();
+  }
+
+  function renderCells(currentIdx) {
+    const container = document.getElementById('array-display');
+    container.innerHTML = '';
+    nums.forEach((v, i) => {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+
+      const idx = document.createElement('div');
+      idx.className = 'cell-idx';
+      idx.textContent = `[${i}]`;
+
+      const val = document.createElement('div');
+      val.className = 'cell-val';
+      if (v < 0) val.classList.add('negative');
+      if (i === currentIdx) val.classList.add('current');
+      else if (step >= 0 && i >= maxStart && i <= maxEnd) val.classList.add('in-max');
+      val.textContent = v;
+
+      const dp = document.createElement('div');
+      dp.className = 'cell-dp';
+      dp.textContent = dpArr[i] !== null ? `dp=${dpArr[i]}` : '';
+      if (i === currentIdx) dp.classList.add('highlighted');
+
+      cell.appendChild(idx);
+      cell.appendChild(val);
+      cell.appendChild(dp);
+      container.appendChild(cell);
+    });
+  }
+
+  function flash(id) {
+    const el = document.getElementById(id);
+    el.classList.add('updated');
+    setTimeout(() => el.classList.remove('updated'), 600);
+  }
+
+  function stepForward() {
+    step++;
+
+    if (step === 0) {
+      // initialise with first element
+      curSum = nums[0];
+      maxSum = nums[0];
+      dpArr[0] = nums[0];
+      maxStart = 0; maxEnd = 0; tempStart = 0;
+
+      document.getElementById('stat-i').textContent = '0';
+      document.getElementById('stat-cur').textContent = curSum;
+      document.getElementById('stat-max').textContent = maxSum;
+
+      const log = document.getElementById('decision-log');
+      log.textContent = `初始化：curSum = maxSum = nums[0] = ${nums[0]}`;
+      log.className = curSum >= 0 ? 'positive' : '';
+      renderCells(0);
+      return;
+    }
+
+    if (step >= nums.length) {
+      // done
+      const banner = document.getElementById('result-banner');
+      banner.style.display = 'block';
+      banner.textContent = `✓ 遍历完成！最大子数组和 = ${maxSum}  （子数组索引 [${maxStart}..${maxEnd}]）`;
+      document.getElementById('btn-next').disabled = true;
+      return;
+    }
+
+    const i = step;
+    const prev = curSum;
+    const candidate1 = nums[i];
+    const candidate2 = prev + nums[i];
+    const isReset = candidate1 > candidate2;
+
+    curSum = Math.max(candidate1, candidate2);
+    dpArr[i] = curSum;
+
+    if (isReset) {
+      tempStart = i;
+    }
+
+    const prevMax = maxSum;
+    maxSum = Math.max(maxSum, curSum);
+    if (curSum > prevMax) {
+      maxStart = tempStart;
+      maxEnd = i;
+    }
+
+    // UI
+    document.getElementById('stat-i').textContent = i;
+    flash('stat-cur');
+    document.getElementById('stat-cur').textContent = curSum;
+    if (curSum > prevMax) { flash('stat-max'); }
+    document.getElementById('stat-max').textContent = maxSum;
+
+    const log = document.getElementById('decision-log');
+    if (isReset) {
+      log.className = 'reset';
+      log.innerHTML =
+        `i=${i}：curSum前值=${prev} <b>< 0</b>，带上去只会更小！<br>` +
+        `重新从 nums[${i}]=${nums[i]} 开始 → curSum = ${curSum}`;
+    } else {
+      log.className = 'positive';
+      log.innerHTML =
+        `i=${i}：curSum前值=${prev} ≥ 0，接上更大！<br>` +
+        `curSum = ${prev} + ${nums[i]} = ${curSum}` +
+        (curSum > prevMax ? `　→　<b>新的 maxSum = ${maxSum}</b>` : '');
+    }
+
+    renderCells(i);
+  }
+
+  function autoPlay() {
+    if (autoTimer) {
+      clearInterval(autoTimer);
+      autoTimer = null;
+      document.getElementById('btn-auto').textContent = '自动播放';
+    } else {
+      document.getElementById('btn-auto').textContent = '暂停';
+      autoTimer = setInterval(() => {
+        if (step >= nums.length) {
+          clearInterval(autoTimer);
+          autoTimer = null;
+          document.getElementById('btn-auto').textContent = '自动播放';
+          return;
+        }
+        stepForward();
+      }, 900);
+    }
+  }
+
+  // init
+  nums = [...ARRAYS[0]];
+  resetViz();
+</script>
+</body>
+</html>

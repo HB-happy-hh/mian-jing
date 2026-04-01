@@ -1,4 +1,4 @@
-package 两数相加;
+
 // 链表节点定义
 class ListNode {
     int val;
@@ -6,7 +6,7 @@ class ListNode {
     ListNode(int val) { this.val = val; }
 }
 
-class Solution {
+class AddTwoNumbers {
     public ListNode addTwoNumbers(ListNode l1, ListNode l2) {
         // 虚拟头节点，避免单独处理结果链表为空的情况
         // dummy本身不存数据，最终返回 dummy.next 就是结果链表的头

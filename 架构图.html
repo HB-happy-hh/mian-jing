@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>后端分层架构图</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Sans+SC:wght@400;700;900&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0d0d0d;
+    color: #e8e8e8;
+    font-family: 'Noto Sans SC', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+  }
+
+  h1 {
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: 4px;
+    color: #fff;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+  .subtitle {
+    font-size: 13px;
+    color: #555;
+    letter-spacing: 2px;
+    margin-bottom: 48px;
+  }
+
+  .arch {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    width: 100%;
+    max-width: 780px;
+  }
+
+  /* ── 每一层 ── */
+  .layer {
+    width: 100%;
+    border-radius: 12px;
+    padding: 20px 28px;
+    position: relative;
+    animation: fadeIn .5s ease both;
+  }
+  .layer:nth-child(odd)  { animation-delay: .1s; }
+  .layer:nth-child(even) { animation-delay: .2s; }
+
+  @keyframes fadeIn {
+    from { opacity:0; transform: translateY(16px); }
+    to   { opacity:1; transform: translateY(0); }
+  }
+
+  .layer-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    opacity: .55;
+  }
+
+  .layer-title {
+    font-size: 20px;
+    font-weight: 900;
+    margin-bottom: 10px;
+  }
+
+  .layer-desc {
+    font-size: 13px;
+    line-height: 1.7;
+    opacity: .75;
+    margin-bottom: 14px;
+  }
+
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-weight: 700;
+    letter-spacing: .5px;
+  }
+
+  /* ── 颜色主题 ── */
+  .l1 { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border: 1px solid #2a3a6e; }
+  .l1 .layer-label { color: #7b9cff; }
+  .l1 .layer-title { color: #a0b8ff; }
+  .l1 .tag { background: #1e2d6e; color: #7b9cff; }
+
+  .l2 { background: linear-gradient(135deg, #1a2a1a 0%, #162a16 100%); border: 1px solid #2a6e2a; }
+  .l2 .layer-label { color: #7bdf7b; }
+  .l2 .layer-title { color: #a0f0a0; }
+  .l2 .tag { background: #1e4e1e; color: #7bdf7b; }
+
+  .l3 { background: linear-gradient(135deg, #2a1a00 0%, #2a1600 100%); border: 1px solid #6e4a00; }
+  .l3 .layer-label { color: #ffbb44; }
+  .l3 .layer-title { color: #ffd480; }
+  .l3 .tag { background: #3e2800; color: #ffbb44; }
+
+  .l4 { background: linear-gradient(135deg, #1a0a0a 0%, #2a0a0a 100%); border: 1px solid #6e2020; }
+  .l4 .layer-label { color: #ff7b7b; }
+  .l4 .layer-title { color: #ffaaaa; }
+  .l4 .tag { background: #3e1010; color: #ff7b7b; }
+
+  /* ── 箭头连接 ── */
+  .arrow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 6px 0;
+    gap: 2px;
+  }
+  .arrow-line {
+    width: 2px;
+    height: 20px;
+    background: linear-gradient(to bottom, #444, #666);
+  }
+  .arrow-head {
+    width: 0;
+    height: 0;
+    border-left: 7px solid transparent;
+    border-right: 7px solid transparent;
+    border-top: 10px solid #666;
+  }
+  .arrow-label {
+    font-size: 10px;
+    color: #444;
+    letter-spacing: 1px;
+    margin-top: 2px;
+  }
+
+  /* ── 子节点行 ── */
+  .nodes {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .node {
+    flex: 1;
+    min-width: 140px;
+    background: rgba(255,255,255,.04);
+    border-radius: 8px;
+    padding: 12px 14px;
+    border: 1px solid rgba(255,255,255,.07);
+  }
+  .node-title {
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 5px;
+  }
+  .node-desc {
+    font-size: 11px;
+    opacity: .55;
+    line-height: 1.6;
+  }
+
+  /* ── 流量说明 ── */
+  .flow-note {
+    margin-top: 40px;
+    width: 100%;
+    max-width: 780px;
+    background: #111;
+    border: 1px solid #222;
+    border-radius: 12px;
+    padding: 20px 28px;
+    animation: fadeIn .5s ease .4s both;
+  }
+  .flow-note h3 {
+    font-size: 13px;
+    letter-spacing: 3px;
+    color: #555;
+    margin-bottom: 14px;
+    text-transform: uppercase;
+  }
+  .flow-steps {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .fs {
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .fs-arrow { color: #444; font-size: 14px; }
+
+  /* ── 拦截率条 ── */
+  .intercept {
+    margin-top: 24px;
+  }
+  .intercept h3 {
+    font-size: 13px;
+    letter-spacing: 3px;
+    color: #555;
+    margin-bottom: 14px;
+    text-transform: uppercase;
+  }
+  .bar-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .bar-name { font-size: 12px; width: 60px; text-align: right; opacity: .6; }
+  .bar-track {
+    flex: 1;
+    height: 8px;
+    background: #1a1a1a;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    animation: growBar 1s ease both;
+  }
+  @keyframes growBar {
+    from { width: 0 !important; }
+  }
+  .bar-val { font-size: 11px; font-family: 'JetBrains Mono', monospace; opacity: .7; width: 70px; }
+</style>
+</head>
+<body>
+
+<h1>后端分层架构</h1>
+<p class="subtitle">Access · Application · Cache · Database</p>
+
+<div class="arch">
+
+  <!-- 接入层 -->
+  <div class="layer l1">
+    <div class="layer-label">Layer 1 · 接入层</div>
+    <div class="layer-title">接入层 Access Layer</div>
+    <div class="layer-desc">
+      所有外部流量的第一道入口，负责路由分发、限流、鉴权、SSL 终止。
+      用户感知到的就是这一层。
+    </div>
+    <div class="nodes">
+      <div class="node">
+        <div class="node-title" style="color:#a0b8ff">DNS / CDN</div>
+        <div class="node-desc">就近分发静态资源，减少源站压力</div>
+      </div>
+      <div class="node">
+        <div class="node-title" style="color:#a0b8ff">Nginx / 网关</div>
+        <div class="node-desc">反向代理、负载均衡、限流熔断</div>
+      </div>
+      <div class="node">
+        <div class="node-title" style="color:#a0b8ff">API Gateway</div>
+        <div class="node-desc">鉴权、路由、灰度发布、日志采集</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow">
+    <div class="arrow-line"></div>
+    <div class="arrow-head"></div>
+    <div class="arrow-label">路由转发</div>
+  </div>
+
+  <!-- 应用层 -->
+  <div class="layer l2">
+    <div class="layer-label">Layer 2 · 应用层</div>
+    <div class="layer-title">应用层 Application Layer</div>
+    <div class="layer-desc">
+      核心业务逻辑处理层，无状态水平扩展。
+      本地缓存（Caffeine）部署在此层，拦截热点读请求。
+    </div>
+    <div class="nodes">
+      <div class="node">
+        <div class="node-title" style="color:#a0f0a0">业务服务</div>
+        <div class="node-desc">Spring Boot 微服务，处理订单、用户、商品等逻辑</div>
+      </div>
+      <div class="node">
+        <div class="node-title" style="color:#a0f0a0">本地缓存</div>
+        <div class="node-desc">Caffeine，拦截约 70% 热点读，纳秒级响应</div>
+      </div>
+      <div class="node">
+        <div class="node-title" style="color:#a0f0a0">消息队列</div>
+        <div class="node-desc">RocketMQ 异步削峰，解耦下游依赖</div>
+      </div>
+    </div>
+    <div class="tags" style="margin-top:12px">
+      <span class="tag">水平扩展</span>
+      <span class="tag">无状态</span>
+      <span class="tag">熔断降级</span>
+      <span class="tag">布隆过滤器</span>
+    </div>
+  </div>
+
+  <div class="arrow">
+    <div class="arrow-line"></div>
+    <div class="arrow-head"></div>
+    <div class="arrow-label">未命中本地缓存</div>
+  </div>
+
+  <!-- 缓存层 -->
+  <div class="layer l3">
+    <div class="layer-label">Layer 3 · 缓存层</div>
+    <div class="layer-title">缓存层 Cache Layer</div>
+    <div class="layer-desc">
+      分布式缓存，拦截剩余 ~20% 请求，毫秒级响应。
+      通过 Lua 脚本保证原子性操作（如库存扣减），防止超卖。
+    </div>
+    <div class="nodes">
+      <div class="node">
+        <div class="node-title" style="color:#ffd480">Redis 主从</div>
+        <div class="node-desc">主写从读，读写分离，支持高并发读</div>
+      </div>
+      <div class="node">
+        <div class="node-title" style="color:#ffd480">Redis Cluster</div>
+        <div class="node-desc">数据分片，横向扩展容量与吞吐</div>
+      </div>
+      <div class="node">
+        <div class="node-title" style="color:#ffd480">Lua 脚本</div>
+        <div class="node-desc">原子性扣减库存，避免并发超卖</div>
+      </div>
+    </div>
+    <div class="tags" style="margin-top:12px">
+      <span class="tag">防缓存穿透</span>
+      <span class="tag">防缓存击穿</span>
+      <span class="tag">防缓存雪崩</span>
+    </div>
+  </div>
+
+  <div class="arrow">
+    <div class="arrow-line"></div>
+    <div class="arrow-head"></div>
+    <div class="arrow-label">未命中缓存（仅 ~10%）</div>
+  </div>
+
+  <!-- 数据库层 -->
+  <div class="layer l4">
+    <div class="layer-label">Layer 4 · 数据库层</div>
+    <div class="layer-title">数据库层 Database Layer</div>
+    <div class="layer-desc">
+      最终持久化层，只承接少量穿透请求（约 10%）。
+      通过读写分离、分库分表应对高并发写入。
+    </div>
+    <div class="nodes">
+      <div class="node">
+        <div class="node-title" style="color:#ffaaaa">MySQL 主库</div>
+        <div class="node-desc">处理写操作，binlog 同步至从库</div>
+      </div>
+      <div class="node">
+        <div class="node-title" style="color:#ffaaaa">MySQL 从库</div>
+        <div class="node-desc">承接读请求，读写分离降低主库压力</div>
+      </div>
+      <div class="node">
+        <div class="node-title" style="color:#ffaaaa">分库分表</div>
+        <div class="node-desc">ShardingSphere，水平拆分超大表</div>
+      </div>
+    </div>
+    <div class="tags" style="margin-top:12px">
+      <span class="tag">索引优化</span>
+      <span class="tag">慢查询监控</span>
+      <span class="tag">连接池</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- 请求流程 -->
+<div class="flow-note">
+  <h3>请求流向</h3>
+  <div class="flow-steps">
+    <span class="fs">用户请求</span>
+    <span class="fs-arrow">→</span>
+    <span class="fs">CDN / Nginx</span>
+    <span class="fs-arrow">→</span>
+    <span class="fs">API Gateway 鉴权</span>
+    <span class="fs-arrow">→</span>
+    <span class="fs">业务服务</span>
+    <span class="fs-arrow">→</span>
+    <span class="fs">本地缓存 Caffeine</span>
+    <span class="fs-arrow">→</span>
+    <span class="fs">Redis</span>
+    <span class="fs-arrow">→</span>
+    <span class="fs">MySQL</span>
+  </div>
+
+  <!-- 拦截率 -->
+  <div class="intercept">
+    <h3>各层拦截率（以 1000 QPS 为例）</h3>
+    <div class="bar-row">
+      <div class="bar-name">CDN</div>
+      <div class="bar-track"><div class="bar-fill" style="width:40%;background:linear-gradient(90deg,#2a3a6e,#4a6aff)"></div></div>
+      <div class="bar-val">拦截 ~40%</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-name">本地缓存</div>
+      <div class="bar-track"><div class="bar-fill" style="width:70%;background:linear-gradient(90deg,#1e4e1e,#4eff4e)"></div></div>
+      <div class="bar-val">拦截 ~70%</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-name">Redis</div>
+      <div class="bar-track"><div class="bar-fill" style="width:20%;background:linear-gradient(90deg,#3e2800,#ffaa00)"></div></div>
+      <div class="bar-val">拦截 ~20%</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-name">MySQL</div>
+      <div class="bar-track"><div class="bar-fill" style="width:10%;background:linear-gradient(90deg,#3e1010,#ff4444)"></div></div>
+      <div class="bar-val">到达 ~10%</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

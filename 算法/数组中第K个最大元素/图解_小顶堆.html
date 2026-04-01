@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第K个最大元素 · 小顶堆图解</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Sans+SC:wght@300;400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --border: #21262d;
+    --accent: #58a6ff; --green: #3fb950; --red: #f85149;
+    --yellow: #d29922; --purple: #bc8cff; --orange: #ffa657;
+    --teal: #2dd4bf; --text: #c9d1d9; --muted: #484f58; --dim: #30363d;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'Noto Sans SC',sans-serif; min-height:100vh; }
+  body::before {
+    content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image: linear-gradient(rgba(88,166,255,.025) 1px,transparent 1px),
+                      linear-gradient(90deg,rgba(88,166,255,.025) 1px,transparent 1px);
+    background-size:36px 36px;
+  }
+  .wrap { position:relative; z-index:1; max-width:980px; margin:0 auto; padding:40px 20px 80px; }
+
+  /* Hero */
+  .hero { text-align:center; margin-bottom:44px; }
+  .lc-badge {
+    display:inline-flex; align-items:center; gap:8px;
+    background:#3fb95018; border:1px solid #3fb95040; border-radius:8px;
+    padding:4px 14px; font-size:12px; color:var(--green); margin-bottom:16px;
+    font-family:'JetBrains Mono',monospace;
+  }
+  .hero h1 {
+    font-size:clamp(22px,4vw,40px); font-weight:900;
+    background:linear-gradient(135deg,#2dd4bf,#58a6ff);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+    margin-bottom:10px;
+  }
+  .hero p { color:var(--muted); font-size:14px; }
+
+  /* Card */
+  .card { background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:24px; margin-bottom:16px; }
+  .card-title {
+    font-size:11px; letter-spacing:2px; text-transform:uppercase;
+    color:var(--accent); margin-bottom:18px; display:flex; align-items:center; gap:8px;
+  }
+  .card-title::before { content:''; width:3px; height:14px; background:var(--accent); border-radius:2px; display:block; }
+
+  /* Controls */
+  .ctrl-row { display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; }
+  .ctrl-group { display:flex; flex-direction:column; gap:6px; }
+  .ctrl-label { font-size:11px; color:var(--muted); letter-spacing:1px; }
+  input[type=text], input[type=number] {
+    background:var(--bg); border:1px solid var(--border); border-radius:8px;
+    padding:8px 14px; color:var(--text); font-family:'JetBrains Mono',monospace;
+    font-size:14px; outline:none; transition:border-color .2s;
+  }
+  input[type=text] { width:260px; }
+  input[type=number] { width:72px; }
+  input:focus { border-color:var(--accent); }
+  .btn {
+    padding:9px 20px; border-radius:8px; border:none; cursor:pointer;
+    font-family:'Noto Sans SC',sans-serif; font-size:13px; font-weight:700;
+    transition:all .15s; letter-spacing:.5px;
+  }
+  .btn-go     { background:linear-gradient(135deg,#2dd4bf,#58a6ff); color:#0d1117; }
+  .btn-go:hover { opacity:.9; transform:translateY(-1px); }
+  .btn-primary{ background:var(--accent); color:#0d1117; }
+  .btn-primary:hover { background:#79b8ff; }
+  .btn-secondary{ background:var(--dim); color:var(--text); border:1px solid var(--border); }
+  .btn-secondary:hover { background:#3d444d; }
+  .btn:disabled { opacity:.38; cursor:not-allowed; transform:none !important; }
+
+  /* ── Array strip ── */
+  .array-wrap { display:flex; gap:6px; flex-wrap:wrap; align-items:flex-end; padding:8px 0 12px; }
+  .arr-cell {
+    display:flex; flex-direction:column; align-items:center; gap:4px;
+    transition:all .3s ease;
+  }
+  .arr-box {
+    width:46px; height:46px; border-radius:8px; border:2px solid;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'JetBrains Mono',monospace; font-size:16px; font-weight:700;
+    transition:all .3s ease;
+  }
+  .arr-idx { font-size:10px; color:var(--muted); font-family:'JetBrains Mono',monospace; }
+  .arr-default  { background:#1c2128; border-color:var(--dim); color:var(--muted); }
+  .arr-current  { background:#ffa6571a; border-color:var(--orange); color:var(--orange); transform:translateY(-6px); }
+  .arr-done     { background:#3fb9501a; border-color:var(--green); color:var(--green); }
+  .arr-evicted  { background:#f851491a; border-color:var(--red); color:var(--red); opacity:.6; }
+
+  /* ── Heap area: tree + array ── */
+  .heap-area { display:flex; flex-direction:column; align-items:center; gap:16px; min-height:240px; }
+  .heap-svg-wrap { width:100%; overflow:visible; }
+  #heap-svg { width:100%; overflow:visible; }
+  .heap-node { transition:all .4s ease; cursor:default; }
+  .heap-node circle { stroke-width:2.5; transition:all .4s; }
+  .heap-node text { font-family:'JetBrains Mono',monospace; font-size:15px; font-weight:700; }
+  .heap-edge { stroke:var(--muted); stroke-width:1.5; transition:stroke .4s; }
+
+  /* Node color classes applied via JS */
+  .hn-default  circle { fill:#1c2128; stroke:#30363d; }
+  .hn-default  text   { fill:var(--text); }
+  .hn-new      circle { fill:#ffa6571a; stroke:var(--orange); }
+  .hn-new      text   { fill:var(--orange); }
+  .hn-evict    circle { fill:#f851491a; stroke:var(--red); }
+  .hn-evict    text   { fill:var(--red); }
+  .hn-top      circle { fill:#2dd4bf1a; stroke:var(--teal); }
+  .hn-top      text   { fill:var(--teal); }
+  .hn-done     circle { fill:#3fb9501a; stroke:var(--green); }
+  .hn-done     text   { fill:var(--green); }
+
+  /* Heap array row */
+  .heap-arr-row { display:flex; gap:4px; align-items:center; flex-wrap:wrap; }
+  .heap-arr-label { font-size:11px; color:var(--muted); margin-right:6px; font-family:'JetBrains Mono',monospace; }
+  .heap-arr-cell {
+    width:36px; height:36px; border-radius:6px; border:1px solid var(--dim);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:700;
+    background:#1c2128; color:var(--text); position:relative; transition:all .3s;
+  }
+  .heap-arr-cell.root { border-color:var(--teal); color:var(--teal); background:#2dd4bf0e; }
+  .heap-arr-cell.new  { border-color:var(--orange); color:var(--orange); background:#ffa6570e; }
+  .heap-arr-cell-idx  { position:absolute; bottom:-16px; font-size:9px; color:var(--muted); }
+
+  /* Size indicator */
+  .size-bar { display:flex; align-items:center; gap:12px; font-size:13px; font-family:'JetBrains Mono',monospace; }
+  .size-boxes { display:flex; gap:4px; }
+  .size-slot { width:20px; height:20px; border-radius:4px; border:1px solid var(--dim); background:var(--bg); transition:all .3s; }
+  .size-slot.filled { background:var(--teal); border-color:var(--teal); }
+  .size-slot.over   { background:var(--red);  border-color:var(--red); }
+
+  /* Progress + Nav */
+  .progress-wrap { height:4px; background:var(--dim); border-radius:4px; margin-bottom:18px; overflow:hidden; }
+  .progress-bar  { height:100%; background:linear-gradient(90deg,var(--teal),var(--accent)); border-radius:4px; transition:width .4s ease; }
+  .step-nav { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .step-info { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted); margin-left:auto; }
+
+  /* Log */
+  #step-log { font-family:'JetBrains Mono',monospace; font-size:13px; line-height:2; min-height:44px; }
+  .log-line { display:flex; gap:10px; animation:fadeIn .25s ease; }
+  .log-step { color:var(--muted); font-size:11px; min-width:24px; }
+  .log-info  { color:var(--accent); }
+  .log-warn  { color:var(--orange); }
+  .log-ok    { color:var(--green); }
+  .log-red   { color:var(--red); }
+  .log-done  { color:var(--teal); }
+
+  /* Result */
+  .result-box {
+    display:none; margin-top:14px;
+    background:#2dd4bf0e; border:1px solid var(--teal); border-radius:10px;
+    padding:14px 20px; font-family:'JetBrains Mono',monospace; font-size:15px; color:var(--teal);
+  }
+  .result-box.show { display:block; animation:fadeIn .4s ease; }
+
+  /* Code */
+  .code-wrap { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:20px; overflow-x:auto; }
+  pre { font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.8; }
+  .kw{color:#ff7b72} .cm{color:#8b949e;font-style:italic} .fn{color:#d2a8ff} .va{color:#79c0ff} .nu{color:#f2cc60}
+
+  /* Legend */
+  .legend { display:flex; gap:16px; flex-wrap:wrap; margin-top:14px; }
+  .legend-item { display:flex; align-items:center; gap:7px; font-size:12px; color:var(--muted); }
+  .legend-dot { width:14px; height:14px; border-radius:50%; border:2px solid; flex-shrink:0; }
+
+  @keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <div class="lc-badge">✦ LeetCode 215 · 中等</div>
+    <h1>第 K 个最大元素 · 小顶堆</h1>
+    <p>维护大小为 k 的小顶堆 · 堆顶始终是"最弱的候选"· 遍历结束堆顶即答案</p>
+  </div>
+
+  <!-- Controls -->
+  <div class="card">
+    <div class="card-title">输入参数</div>
+    <div class="ctrl-row">
+      <div class="ctrl-group">
+        <div class="ctrl-label">数组（逗号分隔）</div>
+        <input type="text" id="input-arr" value="3,2,1,5,6,4">
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">k 值</div>
+        <input type="number" id="input-k" value="2" min="1">
+      </div>
+      <button class="btn btn-go" onclick="init()">生成步骤</button>
+    </div>
+  </div>
+
+  <!-- Array + Heap -->
+  <div class="card">
+    <div class="card-title">输入数组</div>
+    <div class="array-wrap" id="array-wrap"></div>
+
+    <div class="card-title" style="margin-top:24px">小顶堆（树形结构）</div>
+    <div class="heap-area">
+      <div id="size-bar" class="size-bar">
+        <span style="color:var(--muted)">堆大小：</span>
+        <div class="size-boxes" id="size-boxes"></div>
+        <span id="size-text" style="color:var(--teal)">0 / 0</span>
+      </div>
+      <div class="heap-svg-wrap">
+        <svg id="heap-svg" height="200"></svg>
+      </div>
+      <div class="heap-arr-row" id="heap-arr-row">
+        <span class="heap-arr-label">堆数组：</span>
+      </div>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="border-color:var(--orange);background:#ffa6571a"></div>刚入堆</div>
+      <div class="legend-item"><div class="legend-dot" style="border-color:var(--red);background:#f851491a"></div>被弹出</div>
+      <div class="legend-item"><div class="legend-dot" style="border-color:var(--teal);background:#2dd4bf1a"></div>堆顶（最小）</div>
+      <div class="legend-item"><div class="legend-dot" style="border-color:var(--green);background:#3fb9501a"></div>稳定在堆中</div>
+    </div>
+  </div>
+
+  <!-- Step Nav -->
+  <div class="card">
+    <div class="card-title">分步控制</div>
+    <div class="progress-wrap"><div class="progress-bar" id="progress-bar" style="width:0%"></div></div>
+    <div class="step-nav">
+      <button class="btn btn-secondary" id="btn-prev" onclick="prevStep()" disabled>← 上一步</button>
+      <button class="btn btn-primary"   id="btn-next" onclick="nextStep()" disabled>下一步 →</button>
+      <button class="btn btn-secondary" id="btn-auto" onclick="toggleAuto()" disabled>▶ 自动播放</button>
+      <div class="step-info" id="step-info">步骤 0 / 0</div>
+    </div>
+    <div style="margin-top:20px" id="step-log"></div>
+    <div class="result-box" id="result-box"></div>
+  </div>
+
+  <!-- Code -->
+  <div class="card">
+    <div class="card-title">核心代码</div>
+    <div class="code-wrap"><pre><span class="kw">public int</span> <span class="fn">findKthLargest</span>(<span class="kw">int</span>[] <span class="va">nums</span>, <span class="kw">int</span> <span class="va">k</span>) {
+    <span class="cm">// 小顶堆：堆顶永远是堆内最小的元素</span>
+    PriorityQueue&lt;Integer&gt; <span class="va">minHeap</span> = <span class="kw">new</span> PriorityQueue&lt;&gt;();
+
+    <span class="kw">for</span> (<span class="kw">int</span> <span class="va">num</span> : <span class="va">nums</span>) {
+        <span class="va">minHeap</span>.<span class="fn">offer</span>(<span class="va">num</span>);          <span class="cm">// 先入堆</span>
+
+        <span class="kw">if</span> (<span class="va">minHeap</span>.<span class="fn">size</span>() &gt; <span class="va">k</span>) {
+            <span class="va">minHeap</span>.<span class="fn">poll</span>();           <span class="cm">// 堆满，弹出最小值（不可能是第k大）</span>
+        }
+    }
+    <span class="cm">// 堆中剩下的 k 个，就是最大的 k 个</span>
+    <span class="cm">// 堆顶是这 k 个里最小的，即第 k 大</span>
+    <span class="kw">return</span> <span class="va">minHeap</span>.<span class="fn">peek</span>();
+}</pre></div>
+  </div>
+
+</div>
+
+<script>
+// ══════════════════════════════════════
+// Min-Heap (手写，便于追踪状态)
+// ══════════════════════════════════════
+class MinHeap {
+  constructor() { this.data = []; }
+  offer(v) {
+    this.data.push(v);
+    this._up(this.data.length - 1);
+  }
+  poll() {
+    const top = this.data[0];
+    const last = this.data.pop();
+    if (this.data.length > 0) { this.data[0] = last; this._down(0); }
+    return top;
+  }
+  peek()     { return this.data[0]; }
+  size()     { return this.data.length; }
+  snapshot() { return [...this.data]; }
+
+  _up(i) {
+    while (i > 0) {
+      const p = (i - 1) >> 1;
+      if (this.data[p] > this.data[i]) {
+        [this.data[p], this.data[i]] = [this.data[i], this.data[p]]; i = p;
+      } else break;
+    }
+  }
+  _down(i) {
+    const n = this.data.length;
+    while (true) {
+      let s = i, l = 2*i+1, r = 2*i+2;
+      if (l < n && this.data[l] < this.data[s]) s = l;
+      if (r < n && this.data[r] < this.data[s]) s = r;
+      if (s === i) break;
+      [this.data[s], this.data[i]] = [this.data[i], this.data[s]]; i = s;
+    }
+  }
+}
+
+// ══════════════════════════════════════
+// Step builder
+// ══════════════════════════════════════
+let steps = [], currentStep = 0, autoTimer = null, _k = 2, _vals = [];
+
+function buildSteps(vals, k) {
+  const out = [];
+  const heap = new MinHeap();
+
+  // snap: heapSnap数组, 高亮堆节点索引, 数组各元素状态, msg, cls
+  // arrStates: 'default'|'current'|'done'|'evicted'
+  const arrStates = new Array(vals.length).fill('default');
+
+  const snap = (heapArr, highlightHeap, evictVal, arrSt, msg, cls) => {
+    out.push({
+      heapArr: [...heapArr],
+      highlightHeap,     // index in heapArr to highlight orange (newly added)
+      evictVal,          // value being evicted (shown in red on root before removal)
+      arrStates: [...arrSt],
+      msg, cls
+    });
+  };
+
+  snap([], -1, null, arrStates, `开始：数组共 ${vals.length} 个元素，k = ${k}，维护大小为 k 的小顶堆`, 'log-info');
+
+  for (let i = 0; i < vals.length; i++) {
+    const num = vals[i];
+    arrStates[i] = 'current';
+    snap(heap.snapshot(), -1, null, arrStates, `处理 nums[${i}] = ${num}`, 'log-info');
+
+    // offer
+    heap.offer(num);
+    // find index of newly added (it's at the position after siftUp, but we know it's the last sifted position)
+    // simplification: highlight the position where `num` appears
+    const newIdx = heap.data.indexOf(num); // first occurrence (ok since we highlight briefly)
+    snap(heap.snapshot(), newIdx, null, arrStates,
+      `将 ${num} 加入堆，当前堆大小 = ${heap.size()}`, 'log-warn');
+
+    if (heap.size() > k) {
+      const evicted = heap.peek();
+      snap(heap.snapshot(), -1, evicted, arrStates,
+        `堆大小 ${heap.size()} > k=${k}，弹出堆顶（最小值）${evicted}`, 'log-red');
+      heap.poll();
+      arrStates[i] = (num === evicted) ? 'evicted' : 'done';
+      // also mark the previously 'done' element that got evicted... simplify: just mark current
+      snap(heap.snapshot(), -1, null, arrStates,
+        `弹出 ${evicted} 后，堆大小恢复为 k=${k}，保留的是最大的 ${k} 个`, 'log-ok');
+    } else {
+      arrStates[i] = 'done';
+      snap(heap.snapshot(), -1, null, arrStates,
+        `堆未满，${num} 留在堆中，堆大小 = ${heap.size()} ≤ k=${k}`, 'log-ok');
+    }
+  }
+
+  const ans = heap.peek();
+  snap(heap.snapshot(), 0, null, arrStates,
+    `✅ 遍历完成！堆中剩余最大的 ${k} 个元素，堆顶 = ${ans} = 第 ${k} 大`, 'log-done');
+
+  return { steps: out, result: ans };
+}
+
+let _result = null;
+
+function init() {
+  const raw = document.getElementById('input-arr').value;
+  _vals = raw.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+  _k = Math.max(1, parseInt(document.getElementById('input-k').value) || 2);
+  if (_vals.length === 0) return;
+
+  stopAuto();
+  currentStep = 0;
+  const built = buildSteps(_vals, _k);
+  steps = built.steps;
+  _result = built.result;
+
+  document.getElementById('btn-next').disabled = false;
+  document.getElementById('btn-auto').disabled = false;
+  document.getElementById('btn-prev').disabled = true;
+  document.getElementById('result-box').classList.remove('show');
+  document.getElementById('step-log').innerHTML = '';
+
+  renderStep(0);
+  updateNav();
+}
+
+function renderStep(idx) {
+  if (idx < 0 || idx >= steps.length) return;
+  const s = steps[idx];
+
+  renderArray(s.arrStates);
+  renderHeap(s.heapArr, s.highlightHeap, s.evictVal, idx === steps.length - 1);
+  renderSizeBar(s.heapArr.length, _k);
+
+  // Log
+  const log = document.getElementById('step-log');
+  if (idx === 0) log.innerHTML = '';
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.innerHTML = `<span class="log-step">${String(idx+1).padStart(2,'0')}.</span><span class="${s.cls}">${s.msg}</span>`;
+  log.appendChild(line);
+  log.scrollTop = log.scrollHeight;
+
+  // Progress
+  const pct = steps.length <= 1 ? 100 : (idx / (steps.length - 1)) * 100;
+  document.getElementById('progress-bar').style.width = pct + '%';
+
+  // Result
+  if (idx === steps.length - 1) {
+    const rb = document.getElementById('result-box');
+    rb.textContent = `第 ${_k} 大的元素 = ${_result}`;
+    rb.classList.add('show');
+  }
+}
+
+// ── Render array ──
+function renderArray(states) {
+  const wrap = document.getElementById('array-wrap');
+  wrap.innerHTML = '';
+  _vals.forEach((v, i) => {
+    const cell = document.createElement('div');
+    cell.className = 'arr-cell';
+    const box = document.createElement('div');
+    box.className = `arr-box arr-${states[i]}`;
+    box.textContent = v;
+    const idx = document.createElement('div');
+    idx.className = 'arr-idx';
+    idx.textContent = i;
+    cell.appendChild(box); cell.appendChild(idx);
+    wrap.appendChild(cell);
+  });
+}
+
+// ── Render heap tree via SVG ──
+const R = 22;        // node radius
+const LH = 72;       // level height
+const SVG_W = 700;   // logical SVG width
+
+function nodePos(i) {
+  const level = Math.floor(Math.log2(i + 1));
+  const posInLevel = i - (Math.pow(2, level) - 1);
+  const totalInLevel = Math.pow(2, level);
+  const x = (posInLevel + 0.5) / totalInLevel * SVG_W;
+  const y = 44 + level * LH;
+  return { x, y };
+}
+
+function renderHeap(arr, highlightIdx, evictVal, isDone) {
+  const svg = document.getElementById('heap-svg');
+  svg.innerHTML = '';
+
+  if (arr.length === 0) {
+    svg.setAttribute('height', 80);
+    svg.setAttribute('viewBox', `0 0 ${SVG_W} 80`);
+    const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    t.setAttribute('x', SVG_W / 2); t.setAttribute('y', 44);
+    t.setAttribute('text-anchor', 'middle'); t.setAttribute('fill', '#484f58');
+    t.setAttribute('font-family', 'JetBrains Mono, monospace'); t.setAttribute('font-size', '13');
+    t.textContent = '堆为空';
+    svg.appendChild(t);
+    renderHeapArr([]);
+    return;
+  }
+
+  const depth = Math.floor(Math.log2(arr.length)) + 1;
+  const svgH = 44 + depth * LH + R + 10;
+  svg.setAttribute('height', svgH);
+  svg.setAttribute('viewBox', `0 0 ${SVG_W} ${svgH}`);
+
+  // Edges first (behind nodes)
+  for (let i = 1; i < arr.length; i++) {
+    const parent = (i - 1) >> 1;
+    const {x:x1,y:y1} = nodePos(parent);
+    const {x:x2,y:y2} = nodePos(i);
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+    line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+    line.setAttribute('stroke', '#30363d'); line.setAttribute('stroke-width', '1.5');
+    svg.appendChild(line);
+  }
+
+  // Nodes
+  arr.forEach((val, i) => {
+    const {x, y} = nodePos(i);
+
+    // Determine color
+    let fill, stroke, textColor;
+    if (evictVal !== null && i === 0) {
+      fill = '#f851491a'; stroke = '#f85149'; textColor = '#f85149';   // evicting root
+    } else if (isDone && i === 0) {
+      fill = '#2dd4bf1a'; stroke = '#2dd4bf'; textColor = '#2dd4bf';   // final answer
+    } else if (i === highlightIdx) {
+      fill = '#ffa6571a'; stroke = '#ffa657'; textColor = '#ffa657';   // newly added
+    } else if (isDone) {
+      fill = '#3fb9501a'; stroke = '#3fb950'; textColor = '#3fb950';   // done
+    } else if (i === 0) {
+      fill = '#2dd4bf0d'; stroke = '#2dd4bf88'; textColor = '#2dd4bf'; // heap top (teal, subtle)
+    } else {
+      fill = '#1c2128';   stroke = '#30363d';   textColor = '#c9d1d9'; // default
+    }
+
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', x); circle.setAttribute('cy', y); circle.setAttribute('r', R);
+    circle.setAttribute('fill', fill); circle.setAttribute('stroke', stroke); circle.setAttribute('stroke-width', '2.5');
+    g.appendChild(circle);
+
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', x); text.setAttribute('y', y + 5);
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('font-family', 'JetBrains Mono, monospace');
+    text.setAttribute('font-size', '15'); text.setAttribute('font-weight', '700');
+    text.setAttribute('fill', textColor);
+    text.textContent = val;
+    g.appendChild(text);
+
+    // Label index below
+    const idx = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    idx.setAttribute('x', x); idx.setAttribute('y', y + R + 14);
+    idx.setAttribute('text-anchor', 'middle');
+    idx.setAttribute('font-family', 'JetBrains Mono, monospace');
+    idx.setAttribute('font-size', '10'); idx.setAttribute('fill', '#484f58');
+    idx.textContent = `[${i}]`;
+    g.appendChild(idx);
+
+    svg.appendChild(g);
+  });
+
+  renderHeapArr(arr, highlightIdx, evictVal !== null ? 0 : -1, isDone);
+}
+
+function renderHeapArr(arr, highlightIdx = -1, evictIdx = -1, isDone = false) {
+  const row = document.getElementById('heap-arr-row');
+  row.innerHTML = '<span class="heap-arr-label">堆数组：</span>';
+  if (arr.length === 0) {
+    const e = document.createElement('span');
+    e.style.cssText = 'color:var(--muted);font-size:13px;font-family:JetBrains Mono,monospace';
+    e.textContent = '[ ]';
+    row.appendChild(e);
+    return;
+  }
+  arr.forEach((v, i) => {
+    const cell = document.createElement('div');
+    cell.className = 'heap-arr-cell';
+    if (i === 0 && isDone) cell.classList.add('root');
+    else if (i === highlightIdx) cell.classList.add('new');
+    else if (i === evictIdx) cell.style.cssText = 'border-color:var(--red);color:var(--red);background:#f851490e';
+    cell.textContent = v;
+
+    const idxEl = document.createElement('div');
+    idxEl.className = 'heap-arr-cell-idx';
+    idxEl.textContent = i;
+    cell.appendChild(idxEl);
+    row.appendChild(cell);
+  });
+}
+
+function renderSizeBar(size, k) {
+  const boxes = document.getElementById('size-boxes');
+  boxes.innerHTML = '';
+  const over = size > k;
+  for (let i = 0; i < Math.max(size, k); i++) {
+    const slot = document.createElement('div');
+    slot.className = 'size-slot';
+    if (i < size) slot.classList.add(over ? 'over' : 'filled');
+    boxes.appendChild(slot);
+  }
+  document.getElementById('size-text').textContent = `${size} / ${k}`;
+  document.getElementById('size-text').style.color = over ? 'var(--red)' : 'var(--teal)';
+}
+
+// ── Navigation ──
+function nextStep() {
+  if (currentStep < steps.length - 1) { currentStep++; renderStep(currentStep); updateNav(); }
+}
+function prevStep() {
+  if (currentStep > 0) {
+    currentStep--;
+    const log = document.getElementById('step-log');
+    log.innerHTML = '';
+    document.getElementById('result-box').classList.remove('show');
+    for (let i = 0; i <= currentStep; i++) renderStep(i);
+    updateNav();
+  }
+}
+function updateNav() {
+  document.getElementById('btn-prev').disabled = currentStep <= 0;
+  document.getElementById('btn-next').disabled = currentStep >= steps.length - 1;
+  document.getElementById('step-info').textContent = `步骤 ${currentStep + 1} / ${steps.length}`;
+}
+let autoRunning = false;
+function toggleAuto() {
+  if (autoRunning) { stopAuto(); return; }
+  autoRunning = true;
+  document.getElementById('btn-auto').textContent = '⏸ 暂停';
+  autoTimer = setInterval(() => {
+    if (currentStep >= steps.length - 1) { stopAuto(); return; }
+    nextStep();
+  }, 1000);
+}
+function stopAuto() {
+  autoRunning = false; clearInterval(autoTimer);
+  document.getElementById('btn-auto').textContent = '▶ 自动播放';
+}
+
+window.addEventListener('load', init);
+</script>
+</body>
+</html>

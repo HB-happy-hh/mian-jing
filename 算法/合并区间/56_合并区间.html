@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>56. 合并区间 — 图解 + Java 题解</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Serif+SC:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #21262d;
+    --border: #30363d;
+    --accent: #f78166;
+    --accent2: #79c0ff;
+    --accent3: #56d364;
+    --accent4: #e3b341;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --merged: #388bfd;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Serif SC', serif;
+    line-height: 1.7;
+    padding: 32px 20px 60px;
+  }
+  .container { max-width: 960px; margin: 0 auto; }
+
+  /* ── Header ── */
+  .header { display: flex; align-items: baseline; gap: 16px; margin-bottom: 8px; }
+  .num { font-size: 14px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+  h1 { font-size: 32px; font-weight: 900; letter-spacing: -1px; }
+  .badge {
+    display: inline-block; padding: 2px 10px; border-radius: 20px;
+    font-size: 12px; background: #3d2b00; color: var(--accent4);
+    border: 1px solid #6a4700; margin-left: 4px;
+  }
+  .desc { color: var(--muted); margin: 12px 0 32px; font-size: 15px; }
+
+  /* ── Section headings ── */
+  .section-title {
+    font-size: 18px; font-weight: 700; margin: 36px 0 16px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-title::before {
+    content: '';
+    display: inline-block; width: 4px; height: 18px;
+    background: var(--accent); border-radius: 2px;
+  }
+
+  /* ── Algorithm steps ── */
+  .steps { display: flex; flex-direction: column; gap: 12px; }
+  .step {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px 20px;
+    display: flex; gap: 16px; align-items: flex-start;
+    transition: border-color .2s;
+  }
+  .step:hover { border-color: var(--accent2); }
+  .step-num {
+    font-family: 'JetBrains Mono', monospace; font-size: 13px;
+    color: var(--accent2); background: #112233; border: 1px solid var(--accent2);
+    border-radius: 50%; width: 26px; height: 26px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .step-text { font-size: 15px; }
+  .step-text strong { color: var(--accent4); }
+  .step-text code {
+    font-family: 'JetBrains Mono', monospace; font-size: 13px;
+    background: #1c2128; padding: 1px 6px; border-radius: 4px; color: var(--accent);
+  }
+
+  /* ── Interactive visualizer ── */
+  .viz-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 24px;
+  }
+  .viz-controls { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+  .btn {
+    font-family: 'JetBrains Mono', monospace; font-size: 13px;
+    padding: 8px 18px; border-radius: 6px; cursor: pointer; border: none;
+    transition: all .2s;
+  }
+  .btn-primary { background: var(--accent2); color: #000; font-weight: 700; }
+  .btn-primary:hover { background: #a8d8ff; }
+  .btn-secondary {
+    background: transparent; color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { border-color: var(--accent2); color: var(--accent2); }
+  .btn-danger { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+  .btn-danger:hover { background: var(--accent); color: #000; }
+
+  .input-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+  .input-row label { font-size: 13px; color: var(--muted); }
+  input[type=text] {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text); font-family: 'JetBrains Mono', monospace;
+    font-size: 13px; padding: 7px 12px; width: 260px;
+  }
+  input[type=text]:focus { outline: none; border-color: var(--accent2); }
+
+  /* ── Number line canvas ── */
+  #vizCanvas {
+    width: 100%; height: 180px; display: block;
+    border-radius: 8px; background: var(--surface2);
+    border: 1px solid var(--border);
+  }
+  .step-log {
+    margin-top: 16px; background: var(--surface2);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 16px; min-height: 80px;
+    font-family: 'JetBrains Mono', monospace; font-size: 13px;
+    line-height: 1.9; color: var(--muted);
+  }
+  .step-log .highlight { color: var(--accent3); }
+  .step-log .warn { color: var(--accent); }
+  .step-log .info { color: var(--accent2); }
+
+  .progress-bar {
+    height: 4px; background: var(--surface2); border-radius: 2px; margin: 12px 0;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; background: linear-gradient(90deg, var(--accent2), var(--accent3));
+    border-radius: 2px; transition: width .3s;
+  }
+
+  /* ── Java code block ── */
+  .code-wrap {
+    background: #0d1117; border: 1px solid var(--border);
+    border-radius: 10px; overflow: hidden; margin-top: 8px;
+  }
+  .code-header {
+    background: var(--surface2); padding: 10px 16px;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    color: var(--muted); display: flex; justify-content: space-between; align-items: center;
+  }
+  .copy-btn {
+    background: transparent; border: 1px solid var(--border);
+    color: var(--muted); font-size: 12px; padding: 3px 10px;
+    border-radius: 4px; cursor: pointer; font-family: 'JetBrains Mono', monospace;
+  }
+  .copy-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+  .tab-bar { display: flex; gap: 4px; }
+  .tab-btn {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    padding: 4px 12px; border-radius: 4px 4px 0 0; cursor: pointer;
+    background: transparent; color: var(--muted);
+    border: 1px solid transparent; border-bottom: none;
+    transition: all .2s;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active {
+    background: #0d1117; color: var(--accent2);
+    border-color: var(--border); border-bottom-color: #0d1117;
+  }
+  pre {
+    padding: 20px; overflow-x: auto; font-family: 'JetBrains Mono', monospace;
+    font-size: 13.5px; line-height: 1.75;
+  }
+  /* syntax highlight classes */
+  .kw { color: #ff7b72; }
+  .ty { color: #ffa657; }
+  .cm { color: #8b949e; font-style: italic; }
+  .st { color: #a5d6ff; }
+  .nu { color: #79c0ff; }
+  .fn { color: #d2a8ff; }
+  .op { color: #ff7b72; }
+
+  /* ── Complexity table ── */
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  th, td {
+    padding: 10px 16px; text-align: left; border: 1px solid var(--border);
+    font-size: 14px;
+  }
+  th { background: var(--surface2); color: var(--accent2); font-weight: 700; }
+  td:first-child { font-family: 'JetBrains Mono', monospace; color: var(--accent); }
+
+  /* ── Examples ── */
+  .examples { display: flex; gap: 12px; flex-wrap: wrap; }
+  .ex-btn {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); font-size: 13px; padding: 8px 14px; border-radius: 6px;
+    cursor: pointer; font-family: 'JetBrains Mono', monospace; transition: all .2s;
+  }
+  .ex-btn:hover { border-color: var(--accent4); color: var(--accent4); }
+
+  /* anim step counter */
+  .anim-status {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    color: var(--muted); margin-top: 8px; text-align: right;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <span class="num">LeetCode #56</span>
+    <h1>合并区间</h1>
+    <span class="badge">中等</span>
+  </div>
+  <p class="desc">以数组 intervals 表示若干个区间的集合，合并所有重叠的区间，返回一个不重叠的区间数组，恰好覆盖输入中的所有区间。</p>
+
+  <!-- 核心思路 -->
+  <div class="section-title">核心思路：排序 + 贪心合并</div>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-text">
+        <strong>排序</strong>：按照每个区间的<strong>起始值</strong>升序排列。排序后，能重叠的区间一定是<strong>相邻</strong>的。
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-text">
+        <strong>初始化</strong>：取第一个区间作为"当前区间" <code>cur</code>，加入结果列表。
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-text">
+        <strong>遍历剩余区间</strong>：对于每个区间 <code>next</code>，判断：<br>
+        &nbsp;&nbsp;&nbsp;• 若 <code>next[0] &lt;= cur[1]</code>（有重叠或相邻）→ <strong>合并</strong>：<code>cur[1] = max(cur[1], next[1])</code><br>
+        &nbsp;&nbsp;&nbsp;• 否则 → <strong>无重叠</strong>，将 <code>next</code> 作为新的 <code>cur</code> 加入结果
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-text">
+        <strong>返回</strong>结果列表，转为二维数组。
+      </div>
+    </div>
+  </div>
+
+  <!-- 为什么排序后相邻才可能重叠 -->
+  <div class="section-title">关键洞察</div>
+  <div class="step">
+    <div class="step-num">!</div>
+    <div class="step-text">
+      排序后，若区间 A 的起点 ≤ 区间 B 的起点，则只需检查
+      <strong>A 的终点</strong>是否 ≥ B 的起点。若是，则合并后新区间终点 = <code>max(A终点, B终点)</code>（处理 B 被 A 完全包含的情况）。
+    </div>
+  </div>
+
+  <!-- 可视化 -->
+  <div class="section-title">交互演示</div>
+  <div class="viz-card">
+    <div class="input-row">
+      <label>输入（格式：1,3 2,6 8,10 15,18）：</label>
+      <input type="text" id="inputField" value="1,3 2,6 8,10 15,18">
+    </div>
+    <div class="examples">
+      <button class="ex-btn" onclick="loadExample('1,3 2,6 8,10 15,18')">示例1</button>
+      <button class="ex-btn" onclick="loadExample('1,4 4,5')">示例2</button>
+      <button class="ex-btn" onclick="loadExample('4,7 1,4')">示例3</button>
+      <button class="ex-btn" onclick="loadExample('1,4 2,3')">嵌套</button>
+      <button class="ex-btn" onclick="loadExample('1,3 2,4 3,6 5,9 8,12')">多重叠</button>
+    </div>
+    <br>
+    <div class="viz-controls">
+      <button class="btn btn-primary" onclick="startAnimation()">▶ 开始演示</button>
+      <button class="btn btn-secondary" onclick="stepForward()">下一步</button>
+      <button class="btn btn-danger" onclick="resetViz()">↺ 重置</button>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    <canvas id="vizCanvas"></canvas>
+    <div class="anim-status" id="animStatus">步骤 0 / 0</div>
+    <div class="step-log" id="stepLog">点击「开始演示」查看逐步合并过程…</div>
+  </div>
+
+  <!-- Java 代码 -->
+  <div class="section-title">Java 代码实现</div>
+  <div class="code-wrap">
+    <div class="code-header">
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab('solution')">Solution.java</button>
+        <button class="tab-btn" onclick="switchTab('full')">56_MergeIntervals.java（含测试）</button>
+      </div>
+      <button class="copy-btn" onclick="copyCode()">复制</button>
+    </div>
+
+    <!-- Tab: Solution only -->
+    <pre id="tab-solution"><span class="kw">import</span> java.util.*;
+
+<span class="cm">/**
+ * LeetCode 56. 合并区间
+ * 时间：O(n log n)  空间：O(n)
+ */</span>
+<span class="kw">class</span> <span class="ty">Solution</span> {
+    <span class="kw">public</span> <span class="ty">int</span>[][] <span class="fn">merge</span>(<span class="ty">int</span>[][] intervals) {
+        Arrays.<span class="fn">sort</span>(intervals, (a, b) <span class="op">-></span> a[<span class="nu">0</span>] <span class="op">-</span> b[<span class="nu">0</span>]);
+
+        List&lt;<span class="ty">int</span>[]&gt; result <span class="op">=</span> <span class="kw">new</span> ArrayList&lt;&gt;();
+
+        <span class="kw">for</span> (<span class="ty">int</span>[] cur : intervals) {
+            <span class="ty">int</span>[] last <span class="op">=</span> result.isEmpty() ? <span class="kw">null</span> : result.get(result.size() <span class="op">-</span> <span class="nu">1</span>);
+
+            <span class="kw">if</span> (last <span class="op">==</span> <span class="kw">null</span> <span class="op">||</span> last[<span class="nu">1</span>] <span class="op">&lt;</span> cur[<span class="nu">0</span>]) {
+                result.<span class="fn">add</span>(cur);                          <span class="cm">// 无重叠，直接加入</span>
+            } <span class="kw">else</span> {
+                last[<span class="nu">1</span>] <span class="op">=</span> Math.<span class="fn">max</span>(last[<span class="nu">1</span>], cur[<span class="nu">1</span>]);  <span class="cm">// 有重叠，扩展终点</span>
+            }
+        }
+
+        <span class="kw">return</span> result.<span class="fn">toArray</span>(<span class="kw">new</span> <span class="ty">int</span>[<span class="nu">0</span>][]);
+    }
+}</pre>
+
+    <!-- Tab: Full file with tests -->
+    <pre id="tab-full" style="display:none"><span class="kw">import</span> java.util.*;
+
+<span class="cm">/**
+ * LeetCode 56. 合并区间
+ *
+ * 思路：排序 + 贪心合并
+ *  1. 按区间起始值升序排序，确保能重叠的区间一定相邻
+ *  2. 遍历排序后的区间，与结果列表末尾区间比较：
+ *     - 有重叠（next[0] &lt;= cur[1]）→ 合并，终点取 max
+ *     - 无重叠                     → 直接追加到结果
+ *
+ * 时间复杂度：O(n log n)  排序主导
+ * 空间复杂度：O(n)        结果列表
+ */</span>
+<span class="kw">class</span> <span class="ty">Solution</span> {
+    <span class="kw">public</span> <span class="ty">int</span>[][] <span class="fn">merge</span>(<span class="ty">int</span>[][] intervals) {
+        Arrays.<span class="fn">sort</span>(intervals, (a, b) <span class="op">-></span> a[<span class="nu">0</span>] <span class="op">-</span> b[<span class="nu">0</span>]);
+
+        List&lt;<span class="ty">int</span>[]&gt; result <span class="op">=</span> <span class="kw">new</span> ArrayList&lt;&gt;();
+
+        <span class="kw">for</span> (<span class="ty">int</span>[] cur : intervals) {
+            <span class="ty">int</span>[] last <span class="op">=</span> result.isEmpty() ? <span class="kw">null</span> : result.get(result.size() <span class="op">-</span> <span class="nu">1</span>);
+
+            <span class="kw">if</span> (last <span class="op">==</span> <span class="kw">null</span> <span class="op">||</span> last[<span class="nu">1</span>] <span class="op">&lt;</span> cur[<span class="nu">0</span>]) {
+                result.<span class="fn">add</span>(cur);
+            } <span class="kw">else</span> {
+                last[<span class="nu">1</span>] <span class="op">=</span> Math.<span class="fn">max</span>(last[<span class="nu">1</span>], cur[<span class="nu">1</span>]);
+            }
+        }
+
+        <span class="kw">return</span> result.<span class="fn">toArray</span>(<span class="kw">new</span> <span class="ty">int</span>[<span class="nu">0</span>][]);
+    }
+}
+
+<span class="cm">// ─── 测试 ────────────────────────────────────────────</span>
+<span class="kw">class</span> <span class="ty">Main</span> {
+    <span class="kw">public static void</span> <span class="fn">main</span>(<span class="ty">String</span>[] args) {
+        <span class="ty">Solution</span> sol <span class="op">=</span> <span class="kw">new</span> <span class="ty">Solution</span>();
+
+        <span class="cm">// 示例1：[[1,3],[2,6],[8,10],[15,18]] → [[1,6],[8,10],[15,18]]</span>
+        <span class="fn">print</span>(sol.<span class="fn">merge</span>(<span class="kw">new</span> <span class="ty">int</span>[][]{{<span class="nu">1</span>,<span class="nu">3</span>},{<span class="nu">2</span>,<span class="nu">6</span>},{<span class="nu">8</span>,<span class="nu">10</span>},{<span class="nu">15</span>,<span class="nu">18</span>}}));
+
+        <span class="cm">// 示例2：[[1,4],[4,5]] → [[1,5]]（端点相邻也算重叠）</span>
+        <span class="fn">print</span>(sol.<span class="fn">merge</span>(<span class="kw">new</span> <span class="ty">int</span>[][]{{<span class="nu">1</span>,<span class="nu">4</span>},{<span class="nu">4</span>,<span class="nu">5</span>}}));
+
+        <span class="cm">// 示例3：[[4,7],[1,4]] → [[1,7]]（输入未排序）</span>
+        <span class="fn">print</span>(sol.<span class="fn">merge</span>(<span class="kw">new</span> <span class="ty">int</span>[][]{{<span class="nu">4</span>,<span class="nu">7</span>},{<span class="nu">1</span>,<span class="nu">4</span>}}));
+
+        <span class="cm">// 嵌套：[[1,10],[2,3]] → [[1,10]]（后区间被完全包含）</span>
+        <span class="fn">print</span>(sol.<span class="fn">merge</span>(<span class="kw">new</span> <span class="ty">int</span>[][]{{<span class="nu">1</span>,<span class="nu">10</span>},{<span class="nu">2</span>,<span class="nu">3</span>}}));
+    }
+
+    <span class="kw">static void</span> <span class="fn">print</span>(<span class="ty">int</span>[][] res) {
+        StringBuilder sb <span class="op">=</span> <span class="kw">new</span> StringBuilder(<span class="st">"["</span>);
+        <span class="kw">for</span> (<span class="ty">int</span> i <span class="op">=</span> <span class="nu">0</span>; i <span class="op">&lt;</span> res.length; i<span class="op">++</span>) {
+            sb.<span class="fn">append</span>(Arrays.<span class="fn">toString</span>(res[i]));
+            <span class="kw">if</span> (i <span class="op">&lt;</span> res.length <span class="op">-</span> <span class="nu">1</span>) sb.<span class="fn">append</span>(<span class="st">", "</span>);
+        }
+        sb.<span class="fn">append</span>(<span class="st">"]"</span>);
+        System.out.<span class="fn">println</span>(sb);
+    }
+}</pre>
+  </div>
+
+  <!-- 复杂度 -->
+  <div class="section-title">复杂度分析</div>
+  <table>
+    <tr><th>维度</th><th>复杂度</th><th>说明</th></tr>
+    <tr><td>时间</td><td>O(n log n)</td><td>排序主导；后续遍历为 O(n)</td></tr>
+    <tr><td>空间</td><td>O(n)</td><td>结果列表最多存 n 个区间</td></tr>
+  </table>
+
+  <!-- 边界 -->
+  <div class="section-title">易错边界</div>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">⚠</div>
+      <div class="step-text">
+        <strong>区间相邻（端点相等）也算重叠</strong>：<code>[1,4]</code> 和 <code>[4,5]</code> 合并为 <code>[1,5]</code>，
+        判断条件用 <code>&lt;</code> 而非 <code>&lt;=</code>。
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">⚠</div>
+      <div class="step-text">
+        <strong>后一个区间被前一个完全包含</strong>：<code>[1,10]</code> 和 <code>[2,3]</code>，
+        合并终点必须取 <code>max</code>，不能直接赋值。
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">⚠</div>
+      <div class="step-text">
+        <strong>输入未排序</strong>：示例 3 中 <code>[[4,7],[1,4]]</code>，排序后才能正确合并。
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─────────────── Visualizer ───────────────
+let animSteps = [];
+let animIdx = 0;
+let animTimer = null;
+
+function parseInput(str) {
+  return str.trim().split(/\s+/).map(s => {
+    const [a, b] = s.split(',').map(Number);
+    return [a, b];
+  }).filter(x => x.length === 2 && !isNaN(x[0]) && !isNaN(x[1]));
+}
+
+function loadExample(val) {
+  document.getElementById('inputField').value = val;
+  resetViz();
+}
+
+function buildSteps(intervals) {
+  const steps = [];
+  const sorted = [...intervals].sort((a, b) => a[0] - b[0]);
+  const sortedSnap = () => JSON.parse(JSON.stringify(sorted));
+
+  steps.push({ type: 'sort', sorted: sortedSnap(), result: [] });
+
+  const result = [];
+  for (let i = 0; i < sorted.length; i++) {
+    const interval = sorted[i];
+    if (result.length === 0 || result[result.length - 1][1] < interval[0]) {
+      result.push([...interval]);
+      steps.push({
+        type: 'add', idx: i, interval: [...interval],
+        sorted: sortedSnap(),
+        result: JSON.parse(JSON.stringify(result)),
+        msg: `区间 [${interval}] 与结果末尾无重叠 → 直接加入`
+      });
+    } else {
+      const old = result[result.length - 1][1];
+      result[result.length - 1][1] = Math.max(result[result.length - 1][1], interval[1]);
+      steps.push({
+        type: 'merge', idx: i, interval: [...interval],
+        sorted: sortedSnap(),
+        result: JSON.parse(JSON.stringify(result)),
+        msg: `区间 [${interval}] 与 [...,${old}] 重叠 → 合并，终点更新为 ${result[result.length - 1][1]}`
+      });
+    }
+  }
+  steps.push({ type: 'done', sorted: sortedSnap(), result: JSON.parse(JSON.stringify(result)) });
+  return steps;
+}
+
+function getRange(intervals) {
+  let mn = Infinity, mx = -Infinity;
+  intervals.forEach(([a, b]) => { mn = Math.min(mn, a); mx = Math.max(mx, b); });
+  return [mn, mx];
+}
+
+function drawViz(step) {
+  const canvas = document.getElementById('vizCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth; const H = 180;
+  canvas.width = W; canvas.height = H;
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#161b22';
+  ctx.fillRect(0, 0, W, H);
+
+  if (!step || !step.sorted || step.sorted.length === 0) return;
+
+  // Always derive range from the full sorted array so scale stays stable
+  const [mn, mx] = getRange(step.sorted);
+  const pad = 44, barH = 16;
+  const scale = (W - pad * 2) / Math.max(mx - mn, 1);
+  const toX = v => pad + (v - mn) * scale;
+
+  // axis
+  ctx.strokeStyle = '#30363d';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(pad, H - 28); ctx.lineTo(W - pad, H - 28); ctx.stroke();
+
+  // tick marks — skip some if too dense
+  const tickStep = Math.ceil((mx - mn) / 20);
+  ctx.fillStyle = '#8b949e'; ctx.font = '11px JetBrains Mono, monospace'; ctx.textAlign = 'center';
+  for (let v = mn; v <= mx; v += tickStep) {
+    const x = toX(v);
+    ctx.beginPath(); ctx.moveTo(x, H - 28); ctx.lineTo(x, H - 22); ctx.stroke();
+    ctx.fillText(v, x, H - 10);
+  }
+
+  // Draw original sorted intervals (top row) — always visible
+  ctx.fillStyle = '#8b949e'; ctx.font = '11px Noto Serif SC, serif'; ctx.textAlign = 'left';
+  ctx.fillText('排序后', 4, 22);
+
+  step.sorted.forEach(([a, b], i) => {
+    const x = toX(a), w = Math.max((b - a) * scale, 8);
+    const isActive = step.idx === i;
+    const isMerging = step.type === 'merge' && step.idx === i;
+    ctx.fillStyle = isActive ? (isMerging ? '#f7816655' : '#79c0ff55') : '#21262d';
+    ctx.strokeStyle = isActive ? (isMerging ? '#f78166' : '#79c0ff') : '#30363d';
+    ctx.lineWidth = isActive ? 2 : 1;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x, 8, w, barH, 3);
+    else ctx.rect(x, 8, w, barH);
+    ctx.fill(); ctx.stroke();
+
+    ctx.fillStyle = isActive ? '#fff' : '#8b949e';
+    ctx.font = '11px JetBrains Mono, monospace'; ctx.textAlign = 'center';
+    if (w > 24) ctx.fillText(`${a},${b}`, x + w / 2, 20);
+  });
+
+  // Draw result intervals (bottom row)
+  if (step.result && step.result.length > 0) {
+    ctx.fillStyle = '#8b949e'; ctx.font = '11px Noto Serif SC, serif'; ctx.textAlign = 'left';
+    ctx.fillText('结果', 4, 55);
+
+    step.result.forEach(([a, b], i) => {
+      const x = toX(a), w = Math.max((b - a) * scale, 8);
+      const isLast = i === step.result.length - 1;
+      ctx.fillStyle = isLast && step.type !== 'done' ? '#388bfd33' : '#56d36433';
+      ctx.strokeStyle = isLast && step.type !== 'done' ? '#388bfd' : '#56d364';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(x, 40, w, barH, 3);
+      else ctx.rect(x, 40, w, barH);
+      ctx.fill(); ctx.stroke();
+
+      ctx.fillStyle = '#e6edf3';
+      ctx.font = '11px JetBrains Mono, monospace'; ctx.textAlign = 'center';
+      if (w > 24) ctx.fillText(`${a},${b}`, x + w / 2, 52);
+    });
+  }
+}
+
+function resetViz() {
+  clearInterval(animTimer);
+  animSteps = [];
+  animIdx = 0;
+  document.getElementById('progressFill').style.width = '0%';
+  document.getElementById('animStatus').textContent = '步骤 0 / 0';
+  document.getElementById('stepLog').innerHTML = '点击「开始演示」查看逐步合并过程…';
+  const canvas = document.getElementById('vizCanvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth; canvas.height = 180;
+  ctx.fillStyle = '#161b22'; ctx.fillRect(0, 0, canvas.width, 180);
+}
+
+function applyStep(idx) {
+  if (idx >= animSteps.length) return;
+  const step = animSteps[idx];
+  const total = animSteps.length - 1;
+  document.getElementById('progressFill').style.width = `${(idx / Math.max(total, 1)) * 100}%`;
+  document.getElementById('animStatus').textContent = `步骤 ${idx} / ${total}`;
+
+  const log = document.getElementById('stepLog');
+  if (step.type === 'sort') {
+    log.innerHTML = `<span class="info">► 按起始值排序：</span><span class="highlight">[${step.sorted.map(a => `[${a}]`).join(', ')}]</span>`;
+  } else if (step.type === 'add') {
+    log.innerHTML += `<br><span class="highlight">✔ ${step.msg}</span> → 结果: [${step.result.map(a => `[${a}]`).join(', ')}]`;
+  } else if (step.type === 'merge') {
+    log.innerHTML += `<br><span class="warn">⟳ ${step.msg}</span> → 结果: [${step.result.map(a => `[${a}]`).join(', ')}]`;
+  } else if (step.type === 'done') {
+    log.innerHTML += `<br><br><span class="highlight">✅ 完成！最终结果: [${step.result.map(a => `[${a}]`).join(', ')}]</span>`;
+  }
+  log.scrollTop = log.scrollHeight;
+  drawViz(step);
+  animIdx = idx + 1;
+}
+
+function startAnimation() {
+  const input = document.getElementById('inputField').value;
+  const intervals = parseInput(input);
+  if (intervals.length === 0) { alert('请输入有效区间'); return; }
+  resetViz();
+  animSteps = buildSteps(intervals);
+  document.getElementById('stepLog').innerHTML = '';
+  clearInterval(animTimer);
+  let i = 0;
+  animTimer = setInterval(() => {
+    if (i >= animSteps.length) { clearInterval(animTimer); return; }
+    applyStep(i++);
+  }, 800);
+}
+
+function stepForward() {
+  const input = document.getElementById('inputField').value;
+  if (animSteps.length === 0) {
+    const intervals = parseInput(input);
+    if (intervals.length === 0) return;
+    animSteps = buildSteps(intervals);
+    document.getElementById('stepLog').innerHTML = '';
+  }
+  if (animIdx < animSteps.length) applyStep(animIdx);
+}
+
+// Tab switching
+let activeTab = 'solution';
+function switchTab(tab) {
+  activeTab = tab;
+  document.getElementById('tab-solution').style.display = tab === 'solution' ? 'block' : 'none';
+  document.getElementById('tab-full').style.display = tab === 'full' ? 'block' : 'none';
+  document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+    btn.classList.toggle('active', (i === 0 && tab === 'solution') || (i === 1 && tab === 'full'));
+  });
+}
+
+// Copy code
+function copyCode() {
+  const solutionCode = `import java.util.*;
+
+/**
+ * LeetCode 56. 合并区间
+ * 时间：O(n log n)  空间：O(n)
+ */
+class Solution {
+    public int[][] merge(int[][] intervals) {
+        Arrays.sort(intervals, (a, b) -> a[0] - b[0]);
+
+        List<int[]> result = new ArrayList<>();
+
+        for (int[] cur : intervals) {
+            int[] last = result.isEmpty() ? null : result.get(result.size() - 1);
+
+            if (last == null || last[1] < cur[0]) {
+                result.add(cur);                       // 无重叠，直接加入
+            } else {
+                last[1] = Math.max(last[1], cur[1]);   // 有重叠，扩展终点
+            }
+        }
+
+        return result.toArray(new int[0][]);
+    }
+}`;
+
+  const fullCode = `import java.util.*;
+
+/**
+ * LeetCode 56. 合并区间
+ *
+ * 思路：排序 + 贪心合并
+ *  1. 按区间起始值升序排序，确保能重叠的区间一定相邻
+ *  2. 遍历排序后的区间，与结果列表末尾区间比较：
+ *     - 有重叠（next[0] <= cur[1]）→ 合并，终点取 max
+ *     - 无重叠                     → 直接追加到结果
+ *
+ * 时间复杂度：O(n log n)  排序主导
+ * 空间复杂度：O(n)        结果列表
+ */
+class Solution {
+    public int[][] merge(int[][] intervals) {
+        Arrays.sort(intervals, (a, b) -> a[0] - b[0]);
+
+        List<int[]> result = new ArrayList<>();
+
+        for (int[] cur : intervals) {
+            int[] last = result.isEmpty() ? null : result.get(result.size() - 1);
+
+            if (last == null || last[1] < cur[0]) {
+                result.add(cur);
+            } else {
+                last[1] = Math.max(last[1], cur[1]);
+            }
+        }
+
+        return result.toArray(new int[0][]);
+    }
+}
+
+// ─── 测试 ────────────────────────────────────────────
+class Main {
+    public static void main(String[] args) {
+        Solution sol = new Solution();
+
+        // 示例1：[[1,3],[2,6],[8,10],[15,18]] → [[1,6],[8,10],[15,18]]
+        print(sol.merge(new int[][]{{1,3},{2,6},{8,10},{15,18}}));
+
+        // 示例2：[[1,4],[4,5]] → [[1,5]]（端点相邻也算重叠）
+        print(sol.merge(new int[][]{{1,4},{4,5}}));
+
+        // 示例3：[[4,7],[1,4]] → [[1,7]]（输入未排序）
+        print(sol.merge(new int[][]{{4,7},{1,4}}));
+
+        // 嵌套：[[1,10],[2,3]] → [[1,10]]（后区间被完全包含）
+        print(sol.merge(new int[][]{{1,10},{2,3}}));
+    }
+
+    static void print(int[][] res) {
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < res.length; i++) {
+            sb.append(Arrays.toString(res[i]));
+            if (i < res.length - 1) sb.append(", ");
+        }
+        sb.append("]");
+        System.out.println(sb);
+    }
+}`;
+
+  const code = activeTab === 'solution' ? solutionCode : fullCode;
+  navigator.clipboard.writeText(code).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = '已复制 ✓';
+    setTimeout(() => btn.textContent = '复制', 2000);
+  });
+}
+
+// Initial draw
+window.addEventListener('load', () => {
+  const canvas = document.getElementById('vizCanvas');
+  canvas.width = canvas.offsetWidth; canvas.height = 180;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#161b22'; ctx.fillRect(0, 0, canvas.width, 180);
+});
+</script>
+</body>
+</html>

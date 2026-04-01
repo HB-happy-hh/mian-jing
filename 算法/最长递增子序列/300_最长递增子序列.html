@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>300. 最长递增子序列 — 图解 + Java 题解</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Serif+SC:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #21262d;
+    --border: #30363d;
+    --accent: #f78166;
+    --accent2: #79c0ff;
+    --accent3: #56d364;
+    --accent4: #e3b341;
+    --text: #e6edf3;
+    --muted: #8b949e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Serif SC', serif;
+    line-height: 1.7;
+    padding: 32px 20px 60px;
+  }
+  .container { max-width: 960px; margin: 0 auto; }
+
+  .header { display: flex; align-items: baseline; gap: 16px; margin-bottom: 8px; }
+  .num { font-size: 14px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+  h1 { font-size: 32px; font-weight: 900; letter-spacing: -1px; }
+  .badge {
+    display: inline-block; padding: 2px 10px; border-radius: 20px;
+    font-size: 12px; background: #3d2b00; color: var(--accent4);
+    border: 1px solid #6a4700; margin-left: 4px;
+  }
+  .desc { color: var(--muted); margin: 12px 0 32px; font-size: 15px; }
+
+  .section-title {
+    font-size: 18px; font-weight: 700; margin: 36px 0 16px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-title::before {
+    content: ''; display: inline-block; width: 4px; height: 18px;
+    background: var(--accent); border-radius: 2px;
+  }
+
+  .steps { display: flex; flex-direction: column; gap: 12px; }
+  .step {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px 20px;
+    display: flex; gap: 16px; align-items: flex-start;
+    transition: border-color .2s;
+  }
+  .step:hover { border-color: var(--accent2); }
+  .step-num {
+    font-family: 'JetBrains Mono', monospace; font-size: 13px;
+    color: var(--accent2); background: #112233; border: 1px solid var(--accent2);
+    border-radius: 50%; width: 26px; height: 26px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .step-text { font-size: 15px; }
+  .step-text strong { color: var(--accent4); }
+  .step-text code {
+    font-family: 'JetBrains Mono', monospace; font-size: 13px;
+    background: #1c2128; padding: 1px 6px; border-radius: 4px; color: var(--accent);
+  }
+
+  /* viz */
+  .viz-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 24px;
+  }
+  .viz-controls { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .btn {
+    font-family: 'JetBrains Mono', monospace; font-size: 13px;
+    padding: 8px 18px; border-radius: 6px; cursor: pointer; border: none; transition: all .2s;
+  }
+  .btn-primary { background: var(--accent2); color: #000; font-weight: 700; }
+  .btn-primary:hover { background: #a8d8ff; }
+  .btn-secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--accent2); color: var(--accent2); }
+  .btn-danger { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+  .btn-danger:hover { background: var(--accent); color: #000; }
+
+  .input-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  .input-row label { font-size: 13px; color: var(--muted); }
+  input[type=text] {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text); font-family: 'JetBrains Mono', monospace;
+    font-size: 13px; padding: 7px 12px; width: 300px;
+  }
+  input[type=text]:focus { outline: none; border-color: var(--accent2); }
+
+  .examples { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  .ex-btn {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); font-size: 13px; padding: 6px 12px; border-radius: 6px;
+    cursor: pointer; font-family: 'JetBrains Mono', monospace; transition: all .2s;
+  }
+  .ex-btn:hover { border-color: var(--accent4); color: var(--accent4); }
+
+  /* DP table */
+  .dp-area {
+    overflow-x: auto; margin: 16px 0;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 20px;
+    min-height: 140px;
+  }
+  .dp-table { border-collapse: collapse; font-family: 'JetBrains Mono', monospace; font-size: 14px; }
+  .dp-table td {
+    width: 52px; height: 52px; text-align: center; border: 1px solid var(--border);
+    border-radius: 4px; position: relative; transition: background .3s, border-color .3s;
+    vertical-align: middle;
+  }
+  .dp-table .row-label {
+    width: 70px; text-align: right; padding-right: 12px;
+    color: var(--muted); font-size: 12px; border: none; background: transparent;
+  }
+  .dp-table .idx { color: var(--muted); font-size: 11px; }
+  .dp-table .cell-val { font-size: 16px; font-weight: 700; }
+  .cell-normal  { background: var(--surface); }
+  .cell-active  { background: #1a2e4a; border-color: var(--accent2) !important; }
+  .cell-compare { background: #2a1a00; border-color: var(--accent4) !important; }
+  .cell-updated { background: #0d2e1a; border-color: var(--accent3) !important; }
+  .cell-best    { background: #1a0d2e; border-color: #d2a8ff !important; }
+
+  .progress-bar { height: 4px; background: var(--surface2); border-radius: 2px; margin: 12px 0; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent2), var(--accent3)); border-radius: 2px; transition: width .3s; }
+
+  .step-log {
+    margin-top: 12px; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 16px; min-height: 72px;
+    font-family: 'JetBrains Mono', monospace; font-size: 13px;
+    line-height: 1.9; color: var(--muted); overflow-y: auto; max-height: 160px;
+  }
+  .step-log .hi  { color: var(--accent3); }
+  .step-log .wi  { color: var(--accent); }
+  .step-log .inf { color: var(--accent2); }
+  .step-log .pu  { color: #d2a8ff; }
+  .anim-status { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted); margin-top: 6px; text-align: right; }
+
+  /* code */
+  .code-wrap { background: #0d1117; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-top: 8px; }
+  .code-header {
+    background: var(--surface2); padding: 10px 16px;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    color: var(--muted); display: flex; justify-content: space-between; align-items: center;
+  }
+  .copy-btn {
+    background: transparent; border: 1px solid var(--border); color: var(--muted);
+    font-size: 12px; padding: 3px 10px; border-radius: 4px; cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .copy-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+  pre { padding: 20px; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 13.5px; line-height: 1.75; }
+  .kw { color: #ff7b72; } .ty { color: #ffa657; } .cm { color: #8b949e; font-style: italic; }
+  .st { color: #a5d6ff; } .nu { color: #79c0ff; } .fn { color: #d2a8ff; } .op { color: #ff7b72; }
+
+  table.cmp { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  table.cmp th, table.cmp td { padding: 10px 16px; text-align: left; border: 1px solid var(--border); font-size: 14px; }
+  table.cmp th { background: var(--surface2); color: var(--accent2); font-weight: 700; }
+  table.cmp td:first-child { font-family: 'JetBrains Mono', monospace; color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <span class="num">LeetCode #300</span>
+    <h1>最长递增子序列</h1>
+    <span class="badge">中等</span>
+  </div>
+  <p class="desc">给你一个整数数组 nums，找到其中最长严格递增子序列的长度。子序列不要求连续，但顺序不能改变。</p>
+
+  <div class="section-title">核心思路：动态规划</div>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-text">
+        <strong>定义状态</strong>：<code>dp[i]</code> = 以 <code>nums[i]</code> 结尾的最长严格递增子序列的长度。
+        初始全为 <code>1</code>（每个元素自身就是长度 1 的子序列）。
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-text">
+        <strong>状态转移</strong>：对每个 <code>i</code>，向左扫描所有 <code>j &lt; i</code>：<br>
+        &nbsp;&nbsp;若 <code>nums[j] &lt; nums[i]</code>，则 <code>nums[i]</code> 可以接在 <code>nums[j]</code> 后面<br>
+        &nbsp;&nbsp;→ <code>dp[i] = max(dp[i], dp[j] + 1)</code>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-text">
+        <strong>答案</strong>：所有 <code>dp[i]</code> 中的最大值（不一定是 <code>dp[n-1]</code>，因为最长子序列不一定以最后一个元素结尾）。
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">关键洞察</div>
+  <div class="step">
+    <div class="step-num">!</div>
+    <div class="step-text">
+      <code>dp[i]</code> 只依赖它左边的所有状态，因此从左到右填表，每填一格就已知它之前所有结果。
+      两层循环，外层 <code>i</code> 从 1 到 n-1，内层 <code>j</code> 从 0 到 i-1。
+    </div>
+  </div>
+
+  <div class="section-title">交互演示</div>
+  <div class="viz-card">
+    <div class="input-row">
+      <label>输入数组（逗号或空格分隔）：</label>
+      <input type="text" id="inputField" value="10,9,2,5,3,7,101,18">
+    </div>
+    <div class="examples">
+      <button class="ex-btn" onclick="loadEx('10,9,2,5,3,7,101,18')">示例1</button>
+      <button class="ex-btn" onclick="loadEx('0,1,0,3,2,3')">示例2</button>
+      <button class="ex-btn" onclick="loadEx('7,7,7,7,7,7,7')">示例3（全相等）</button>
+      <button class="ex-btn" onclick="loadEx('1,3,6,7,9,4,10,5,6')">综合</button>
+    </div>
+    <div class="viz-controls">
+      <button class="btn btn-primary" onclick="startAnim()">▶ 开始演示</button>
+      <button class="btn btn-secondary" onclick="stepFwd()">下一步</button>
+      <button class="btn btn-danger" onclick="resetViz()">↺ 重置</button>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progFill" style="width:0%"></div></div>
+    <div class="dp-area" id="dpArea">
+      <span style="color:var(--muted);font-size:13px;font-family:'JetBrains Mono',monospace">点击「开始演示」后，dp 表格将在这里逐步填充…</span>
+    </div>
+    <div class="anim-status" id="animStatus">步骤 0 / 0</div>
+    <div class="step-log" id="stepLog">点击「开始演示」查看逐步推导过程…</div>
+  </div>
+
+  <div class="section-title">Java 代码实现</div>
+  <div class="code-wrap">
+    <div class="code-header">
+      <span>300_LIS.java</span>
+      <button class="copy-btn" onclick="copyCode()">复制</button>
+    </div>
+    <pre><span class="kw">import</span> java.util.*;
+
+<span class="cm">/**
+ * LeetCode 300. 最长递增子序列
+ * 时间：O(n²)  空间：O(n)
+ */</span>
+<span class="kw">class</span> <span class="ty">Solution</span> {
+    <span class="kw">public int</span> <span class="fn">lengthOfLIS</span>(<span class="ty">int</span>[] nums) {
+        <span class="ty">int</span> n <span class="op">=</span> nums.length;
+
+        <span class="cm">// dp[i]：以 nums[i] 结尾的最长递增子序列长度，初始都为 1</span>
+        <span class="ty">int</span>[] dp <span class="op">=</span> <span class="kw">new</span> <span class="ty">int</span>[n];
+        Arrays.<span class="fn">fill</span>(dp, <span class="nu">1</span>);
+
+        <span class="ty">int</span> ans <span class="op">=</span> <span class="nu">1</span>;
+
+        <span class="kw">for</span> (<span class="ty">int</span> i <span class="op">=</span> <span class="nu">1</span>; i <span class="op">&lt;</span> n; i<span class="op">++</span>) {
+            <span class="cm">// 向左扫描所有 j &lt; i 的位置</span>
+            <span class="kw">for</span> (<span class="ty">int</span> j <span class="op">=</span> <span class="nu">0</span>; j <span class="op">&lt;</span> i; j<span class="op">++</span>) {
+                <span class="kw">if</span> (nums[j] <span class="op">&lt;</span> nums[i]) {
+                    <span class="cm">// nums[i] 可以接在 nums[j] 后面，更新 dp[i]</span>
+                    dp[i] <span class="op">=</span> Math.<span class="fn">max</span>(dp[i], dp[j] <span class="op">+</span> <span class="nu">1</span>);
+                }
+            }
+            ans <span class="op">=</span> Math.<span class="fn">max</span>(ans, dp[i]);
+        }
+
+        <span class="kw">return</span> ans;
+    }
+}</pre>
+  </div>
+
+  <div class="section-title">复杂度分析</div>
+  <table class="cmp">
+    <tr><th>维度</th><th>复杂度</th><th>说明</th></tr>
+    <tr><td>时间</td><td>O(n²)</td><td>两层循环，外层 n 次，内层最多 n 次</td></tr>
+    <tr><td>空间</td><td>O(n)</td><td>dp 数组长度为 n</td></tr>
+  </table>
+
+  <div class="section-title">易错点</div>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">⚠</div>
+      <div class="step-text">
+        <strong>答案不是 dp[n-1]</strong>，而是 <code>max(dp[0..n-1])</code>。
+        最长子序列可能以任何位置的元素结尾。
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">⚠</div>
+      <div class="step-text">
+        <strong>严格递增</strong>：条件是 <code>nums[j] &lt; nums[i]</code>，相等不算。
+        示例3 全为 7，所以答案是 1。
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">⚠</div>
+      <div class="step-text">
+        <strong>子序列 ≠ 子数组</strong>：子序列可以跳过元素，只要保持原来的相对顺序即可。
+        比如 [10,<u>2</u>,<u>5</u>,<u>7</u>,101] 中 [2,5,7] 是子序列。
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let steps = [], stepIdx = 0, timer = null;
+
+function parseInput(s) {
+  return s.trim().split(/[,\s]+/).map(Number).filter(x => !isNaN(x));
+}
+function loadEx(v) { document.getElementById('inputField').value = v; resetViz(); }
+
+// Build all animation steps
+function buildSteps(nums) {
+  const n = nums.length;
+  const dp = new Array(n).fill(1);
+  const st = [];
+  // Initial state
+  st.push({ phase: 'init', dp: [...dp], i: -1, j: -1, nums });
+
+  for (let i = 1; i < n; i++) {
+    for (let j = 0; j < i; j++) {
+      const canExtend = nums[j] < nums[i];
+      if (canExtend) {
+        const newVal = dp[j] + 1;
+        const updated = newVal > dp[i];
+        if (updated) dp[i] = newVal;
+        st.push({ phase: 'compare', dp: [...dp], i, j, canExtend, updated, nums });
+      } else {
+        st.push({ phase: 'compare', dp: [...dp], i, j, canExtend, updated: false, nums });
+      }
+    }
+    st.push({ phase: 'done_i', dp: [...dp], i, j: -1, nums });
+  }
+  st.push({ phase: 'final', dp: [...dp], i: -1, j: -1, nums, ans: Math.max(...dp) });
+  return st;
+}
+
+function renderTable(step) {
+  const { nums, dp, i, j, phase } = step;
+  const n = nums.length;
+
+  let html = '<table class="dp-table"><tbody>';
+
+  // Row: index
+  html += '<tr><td class="row-label">下标</td>';
+  for (let k = 0; k < n; k++) html += `<td class="idx">${k}</td>`;
+  html += '</tr>';
+
+  // Row: nums
+  html += '<tr><td class="row-label">nums</td>';
+  for (let k = 0; k < n; k++) {
+    let cls = 'cell-normal';
+    if (k === i) cls = 'cell-active';
+    if (k === j) cls = 'cell-compare';
+    html += `<td class="${cls}"><div class="cell-val">${nums[k]}</div></td>`;
+  }
+  html += '</tr>';
+
+  // Row: dp
+  html += '<tr><td class="row-label">dp</td>';
+  for (let k = 0; k < n; k++) {
+    let cls = 'cell-normal';
+    if (phase === 'final') { cls = 'cell-updated'; }
+    else if (k === i) cls = 'cell-active';
+    else if (k < i && dp[k] > 0) cls = 'cell-updated';
+    html += `<td class="${cls}"><div class="cell-val" style="color:var(--accent3)">${dp[k]}</div></td>`;
+  }
+  html += '</tr>';
+
+  html += '</tbody></table>';
+  document.getElementById('dpArea').innerHTML = html;
+}
+
+function applyStep(idx) {
+  if (idx >= steps.length) return;
+  const s = steps[idx];
+  const total = steps.length - 1;
+  document.getElementById('progFill').style.width = `${(idx / Math.max(total,1)) * 100}%`;
+  document.getElementById('animStatus').textContent = `步骤 ${idx} / ${total}`;
+
+  renderTable(s);
+
+  const log = document.getElementById('stepLog');
+  if (s.phase === 'init') {
+    log.innerHTML = `<span class="inf">► 初始化：dp 全部填 1（每个元素自身就是长度 1 的子序列）</span>`;
+  } else if (s.phase === 'compare') {
+    const arrow = s.canExtend
+      ? (s.updated
+          ? `<span class="hi">✔ nums[${s.j}]=${s.nums[s.j]} &lt; nums[${s.i}]=${s.nums[s.i]}，可接续，dp[${s.i}] 更新为 ${s.dp[s.i]}</span>`
+          : `<span class="inf">✔ nums[${s.j}]=${s.nums[s.j]} &lt; nums[${s.i}]=${s.nums[s.i]}，可接续，但 dp[${s.i}]=${s.dp[s.i]} 已够大，不更新</span>`)
+      : `<span class="wi">✘ nums[${s.j}]=${s.nums[s.j]} &gt;= nums[${s.i}]=${s.nums[s.i]}，不可接续，跳过</span>`;
+    log.innerHTML += '<br>' + arrow;
+  } else if (s.phase === 'done_i') {
+    log.innerHTML += `<br><span class="pu">── dp[${s.i}] 最终 = ${s.dp[s.i]}（以 nums[${s.i}]=${s.nums[s.i]} 结尾的最长子序列长度）</span>`;
+  } else if (s.phase === 'final') {
+    log.innerHTML += `<br><br><span class="hi">✅ 完成！dp = [${s.dp.join(', ')}]，最大值 = ${s.ans}</span>`;
+  }
+  log.scrollTop = log.scrollHeight;
+  stepIdx = idx + 1;
+}
+
+function resetViz() {
+  clearInterval(timer);
+  steps = []; stepIdx = 0;
+  document.getElementById('progFill').style.width = '0%';
+  document.getElementById('animStatus').textContent = '步骤 0 / 0';
+  document.getElementById('stepLog').innerHTML = '点击「开始演示」查看逐步推导过程…';
+  document.getElementById('dpArea').innerHTML = '<span style="color:var(--muted);font-size:13px;font-family:\'JetBrains Mono\',monospace">点击「开始演示」后，dp 表格将在这里逐步填充…</span>';
+}
+
+function startAnim() {
+  const nums = parseInput(document.getElementById('inputField').value);
+  if (!nums.length) return;
+  resetViz();
+  steps = buildSteps(nums);
+  document.getElementById('stepLog').innerHTML = '';
+  let i = 0;
+  timer = setInterval(() => {
+    if (i >= steps.length) { clearInterval(timer); return; }
+    applyStep(i++);
+  }, 600);
+}
+
+function stepFwd() {
+  const nums = parseInput(document.getElementById('inputField').value);
+  if (!nums.length) return;
+  if (!steps.length) { steps = buildSteps(nums); document.getElementById('stepLog').innerHTML = ''; }
+  if (stepIdx < steps.length) applyStep(stepIdx);
+}
+
+function copyCode() {
+  const code = `import java.util.*;
+
+/**
+ * LeetCode 300. 最长递增子序列
+ * 时间：O(n²)  空间：O(n)
+ */
+class Solution {
+    public int lengthOfLIS(int[] nums) {
+        int n = nums.length;
+
+        // dp[i]：以 nums[i] 结尾的最长递增子序列长度，初始都为 1
+        int[] dp = new int[n];
+        Arrays.fill(dp, 1);
+
+        int ans = 1;
+
+        for (int i = 1; i < n; i++) {
+            // 向左扫描所有 j < i 的位置
+            for (int j = 0; j < i; j++) {
+                if (nums[j] < nums[i]) {
+                    // nums[i] 可以接在 nums[j] 后面，更新 dp[i]
+                    dp[i] = Math.max(dp[i], dp[j] + 1);
+                }
+            }
+            ans = Math.max(ans, dp[i]);
+        }
+
+        return ans;
+    }
+}`;
+  navigator.clipboard.writeText(code).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = '已复制 ✓';
+    setTimeout(() => btn.textContent = '复制', 2000);
+  });
+}
+</script>
+</body>
+</html>

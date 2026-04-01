@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>最大递增子序列和 · 动态规划</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Serif+SC:wght@400;700;900&display=swap');
+
+    :root {
+      --bg: #0d0f14;
+      --surface: #161921;
+      --border: #252a35;
+      --accent: #f0c040;
+      --accent2: #4fc3f7;
+      --accent3: #a8ff78;
+      --red: #ff5f57;
+      --text: #e8eaf0;
+      --muted: #6b7280;
+      --card: #1c2030;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Noto Serif SC', serif;
+      min-height: 100vh;
+      padding: 40px 20px 80px;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 2rem;
+      font-weight: 900;
+      letter-spacing: .04em;
+      margin-bottom: 6px;
+    }
+    h1 span { color: var(--accent); }
+
+    .subtitle {
+      text-align: center;
+      color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .85rem;
+      margin-bottom: 40px;
+    }
+
+    .section {
+      max-width: 900px;
+      margin: 0 auto 32px;
+    }
+
+    /* ── Input Panel ── */
+    .input-panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px 28px;
+    }
+    .input-panel label {
+      font-size: .9rem;
+      color: var(--muted);
+      display: block;
+      margin-bottom: 8px;
+    }
+    .input-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .input-row input {
+      flex: 1;
+      min-width: 200px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1rem;
+      padding: 10px 16px;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .input-row input:focus { border-color: var(--accent); }
+
+    .btn {
+      background: var(--accent);
+      color: #0d0f14;
+      border: none;
+      border-radius: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      font-size: .9rem;
+      padding: 10px 22px;
+      cursor: pointer;
+      transition: opacity .15s, transform .1s;
+    }
+    .btn:hover { opacity: .85; transform: translateY(-1px); }
+    .btn.secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .btn.secondary:hover { border-color: var(--accent2); color: var(--accent2); }
+
+    /* ── Idea Box ── */
+    .idea-box {
+      background: var(--card);
+      border-left: 3px solid var(--accent);
+      border-radius: 0 10px 10px 0;
+      padding: 18px 22px;
+    }
+    .idea-box h3 {
+      font-size: 1rem;
+      color: var(--accent);
+      margin-bottom: 10px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .idea-box p, .idea-box li {
+      font-size: .9rem;
+      line-height: 1.8;
+      color: #c5cad8;
+    }
+    .idea-box ul { padding-left: 20px; }
+    .idea-box code {
+      font-family: 'JetBrains Mono', monospace;
+      background: rgba(240,192,64,.12);
+      color: var(--accent);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: .85em;
+    }
+
+    /* ── Formula ── */
+    .formula-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px 24px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .95rem;
+      line-height: 2;
+    }
+    .formula-box .line { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+    .hl-yellow { color: var(--accent); font-weight: 700; }
+    .hl-blue { color: var(--accent2); }
+    .hl-green { color: var(--accent3); }
+    .hl-red { color: var(--red); }
+
+    /* ── Step Controls ── */
+    .step-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .step-info {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .85rem;
+      color: var(--muted);
+      margin-left: auto;
+    }
+    .speed-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .8rem;
+      color: var(--muted);
+    }
+    input[type=range] {
+      accent-color: var(--accent);
+      width: 90px;
+    }
+
+    /* ── Visualization ── */
+    .vis-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px;
+    }
+
+    .array-section { margin-bottom: 30px; }
+    .array-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .78rem;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .array-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .cell {
+      width: 56px;
+      height: 56px;
+      border-radius: 8px;
+      border: 2px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: 'JetBrains Mono', monospace;
+      transition: background .25s, border-color .25s, transform .2s;
+      position: relative;
+    }
+    .cell .val { font-size: 1.1rem; font-weight: 700; }
+    .cell .idx {
+      font-size: .65rem;
+      color: var(--muted);
+      position: absolute;
+      bottom: 3px;
+    }
+
+    .cell.active {
+      border-color: var(--accent);
+      background: rgba(240,192,64,.15);
+      transform: translateY(-4px) scale(1.08);
+    }
+    .cell.compare {
+      border-color: var(--accent2);
+      background: rgba(79,195,247,.12);
+    }
+    .cell.used {
+      border-color: var(--accent3);
+      background: rgba(168,255,120,.1);
+    }
+    .cell.done {
+      border-color: #3a3f50;
+      background: rgba(255,255,255,.03);
+    }
+
+    .dp-row .cell .val { color: var(--accent2); }
+    .dp-row .cell.active .val { color: var(--accent); }
+    .dp-row .cell.best { border-color: var(--accent3); background: rgba(168,255,120,.15); }
+    .dp-row .cell.best .val { color: var(--accent3); }
+
+    /* ── Arrow SVG ── */
+    #arrow-layer {
+      position: absolute;
+      top: 0; left: 0;
+      pointer-events: none;
+      overflow: visible;
+    }
+    .array-wrapper { position: relative; }
+
+    /* ── Log ── */
+    .log-panel {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 18px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .82rem;
+      min-height: 120px;
+      max-height: 220px;
+      overflow-y: auto;
+      margin-top: 24px;
+      line-height: 1.7;
+    }
+    .log-entry { padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,.04); }
+    .log-entry:last-child { border-bottom: none; }
+    .log-entry .tag {
+      display: inline-block;
+      padding: 0 6px;
+      border-radius: 3px;
+      font-size: .72rem;
+      margin-right: 6px;
+      font-weight: 700;
+    }
+    .tag-init { background: rgba(240,192,64,.2); color: var(--accent); }
+    .tag-cmp  { background: rgba(79,195,247,.2); color: var(--accent2); }
+    .tag-upd  { background: rgba(168,255,120,.2); color: var(--accent3); }
+    .tag-skip { background: rgba(107,114,128,.2); color: var(--muted); }
+    .tag-ans  { background: rgba(255,95,87,.2); color: var(--red); }
+
+    /* ── Answer ── */
+    .answer-bar {
+      display: none;
+      background: linear-gradient(135deg, rgba(168,255,120,.12), rgba(79,195,247,.08));
+      border: 1px solid var(--accent3);
+      border-radius: 10px;
+      padding: 18px 24px;
+      text-align: center;
+      font-family: 'JetBrains Mono', monospace;
+      margin-top: 20px;
+    }
+    .answer-bar.show { display: block; animation: pop .4s ease; }
+    .answer-bar .ans-label { font-size: .8rem; color: var(--muted); margin-bottom: 4px; }
+    .answer-bar .ans-val { font-size: 2.2rem; font-weight: 700; color: var(--accent3); }
+
+    @keyframes pop {
+      0% { transform: scale(.9); opacity: 0; }
+      60% { transform: scale(1.04); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    /* ── Code Highlight ── */
+    .code-block {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: auto;
+      padding: 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .82rem;
+      line-height: 1.9;
+    }
+    .code-line { padding: 1px 6px; border-radius: 4px; white-space: pre; }
+    .code-line.hl { background: rgba(240,192,64,.18); border-left: 3px solid var(--accent); margin-left: -6px; padding-left: 3px; }
+    .kw { color: #c792ea; }
+    .fn { color: var(--accent2); }
+    .num { color: var(--accent3); }
+    .cm { color: var(--muted); font-style: italic; }
+    .str { color: var(--accent); }
+
+    /* ── responsive ── */
+    @media (max-width: 600px) {
+      h1 { font-size: 1.4rem; }
+      .cell { width: 44px; height: 44px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="section">
+  <h1>最大递增子序列<span>和</span></h1>
+  <div class="subtitle">Maximum Sum Increasing Subsequence · Dynamic Programming</div>
+</div>
+
+<!-- ① 核心思路 -->
+<div class="section">
+  <div class="idea-box">
+    <h3>// 核心思路</h3>
+    <ul>
+      <li>定义 <code>dp[i]</code> = 以 <code>arr[i]</code> 结尾的<strong>最大递增子序列之和</strong></li>
+      <li>初始化：<code>dp[i] = arr[i]</code>（子序列至少包含自身）</li>
+      <li>转移：枚举所有 <code>j &lt; i</code>，若 <code>arr[j] &lt; arr[i]</code>，则可以把 <code>arr[i]</code> 接在 <code>j</code> 结尾的子序列后面</li>
+      <li>答案：<code>max(dp[0..n-1])</code></li>
+    </ul>
+  </div>
+</div>
+
+<!-- ② 状态转移方程 -->
+<div class="section">
+  <div class="formula-box">
+    <div class="line">
+      <span class="hl-yellow">dp[i]</span>
+      <span>=</span>
+      <span class="hl-blue">arr[i]</span>
+      &nbsp;&nbsp;
+      <span style="color:var(--muted)">（初始值）</span>
+    </div>
+    <div class="line">
+      <span class="hl-yellow">dp[i]</span>
+      <span>=</span>
+      <span class="hl-blue">max(dp[i],&nbsp; dp[j] + arr[i])</span>
+      &nbsp;&nbsp;
+      <span style="color:var(--muted)">当 arr[j] &lt; arr[i]，∀ j &lt; i</span>
+    </div>
+    <div class="line">
+      <span class="hl-green">ans</span>
+      <span>=</span>
+      <span class="hl-blue">max(dp[0], dp[1], ..., dp[n-1])</span>
+    </div>
+  </div>
+</div>
+
+<!-- ③ 输入 -->
+<div class="section">
+  <div class="input-panel">
+    <label>输入数组（空格分隔整数）</label>
+    <div class="input-row">
+      <input type="text" id="arrInput" value="1 101 2 3 100 4 5" placeholder="e.g. 1 101 2 3 100 4 5" />
+      <button class="btn" onclick="init()">运行</button>
+      <button class="btn secondary" onclick="loadPreset(0)">示例 1</button>
+      <button class="btn secondary" onclick="loadPreset(1)">示例 2</button>
+      <button class="btn secondary" onclick="loadPreset(2)">示例 3</button>
+    </div>
+  </div>
+</div>
+
+<!-- ④ 可视化 -->
+<div class="section">
+  <div class="step-controls">
+    <button class="btn" id="btnPlay" onclick="togglePlay()">▶ 自动演示</button>
+    <button class="btn secondary" onclick="stepBack()">◀ 上一步</button>
+    <button class="btn secondary" onclick="stepFwd()">下一步 ▶</button>
+    <button class="btn secondary" onclick="resetVis()">重置</button>
+    <span class="speed-label">速度</span>
+    <input type="range" id="speedSlider" min="1" max="5" value="3" />
+    <span class="step-info" id="stepInfo">Step 0 / 0</span>
+  </div>
+
+  <div class="vis-card">
+    <div class="array-section">
+      <div class="array-label">arr[]</div>
+      <div class="array-wrapper">
+        <div class="array-row" id="arrRow"></div>
+        <svg id="arrow-layer" width="100%" height="60"></svg>
+      </div>
+    </div>
+    <div class="array-section">
+      <div class="array-label">dp[]</div>
+      <div class="array-row dp-row" id="dpRow"></div>
+    </div>
+
+    <div class="log-panel" id="logPanel"></div>
+    <div class="answer-bar" id="answerBar">
+      <div class="ans-label">最大递增子序列和</div>
+      <div class="ans-val" id="ansVal">—</div>
+    </div>
+  </div>
+</div>
+
+<!-- ⑤ 代码 -->
+<div class="section">
+  <div class="idea-box" style="border-left-color:var(--accent2); margin-bottom:14px;">
+    <h3 style="color:var(--accent2)">// Java 代码（高亮当前执行行）</h3>
+  </div>
+  <div class="code-block" id="codeBlock"></div>
+</div>
+
+
+<script>
+// ─── Data ────────────────────────────────────────────────────────
+const PRESETS = [
+  [1, 101, 2, 3, 100, 4, 5],
+  [3, 4, 5, 10],
+  [10, 5, 4, 3]
+];
+
+let arr = [], dp = [], steps = [], stepIdx = 0;
+let playing = false, timer = null;
+
+const CODE_LINES = [
+  { text: '<span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i &lt; n; i++) {', id: 'outer' },
+  { text: '    dp[i] = arr[i];  <span class="cm">// 至少包含自身</span>', id: 'init' },
+  { text: '    <span class="kw">for</span> (<span class="kw">int</span> j = <span class="num">0</span>; j &lt; i; j++) {', id: 'inner' },
+  { text: '        <span class="kw">if</span> (arr[j] &lt; arr[i]) {', id: 'cmp' },
+  { text: '            dp[i] = <span class="fn">Math.max</span>(dp[i], dp[j] + arr[i]);', id: 'upd' },
+  { text: '        }', id: 'close_if' },
+  { text: '    }', id: 'close_inner' },
+  { text: '    ans = <span class="fn">Math.max</span>(ans, dp[i]);', id: 'ans' },
+  { text: '}', id: 'close_outer' },
+];
+
+function renderCode(highlightIds = []) {
+  const el = document.getElementById('codeBlock');
+  el.innerHTML = CODE_LINES.map(l => {
+    const hl = highlightIds.includes(l.id) ? ' hl' : '';
+    return `<div class="code-line${hl}">${l.text}</div>`;
+  }).join('');
+}
+
+// ─── Build steps ─────────────────────────────────────────────────
+function buildSteps(a) {
+  const n = a.length;
+  const dpArr = new Array(n).fill(null);
+  const result = [];
+  let ans = -Infinity;
+
+  for (let i = 0; i < n; i++) {
+    // init dp[i]
+    dpArr[i] = a[i];
+    result.push({
+      type: 'init', i, j: -1,
+      dp: [...dpArr],
+      codeHl: ['outer', 'init'],
+      msg: `<span class="tag tag-init">INIT</span> i=${i}，dp[${i}] = arr[${i}] = <b>${a[i]}</b>`
+    });
+
+    for (let j = 0; j < i; j++) {
+      // compare
+      result.push({
+        type: 'cmp', i, j,
+        dp: [...dpArr],
+        codeHl: ['inner', 'cmp'],
+        msg: `<span class="tag tag-cmp">CMP</span> j=${j}，arr[${j}]=${a[j]} &lt;? arr[${i}]=${a[i]}`
+      });
+
+      if (a[j] < a[i]) {
+        const newVal = dpArr[j] + a[i];
+        const prev = dpArr[i];
+        if (newVal > dpArr[i]) {
+          dpArr[i] = newVal;
+          result.push({
+            type: 'update', i, j,
+            dp: [...dpArr],
+            codeHl: ['cmp', 'upd'],
+            msg: `<span class="tag tag-upd">UPDATE</span> arr[${j}]=${a[j]} &lt; arr[${i}]=${a[i]}，dp[${i}] = dp[${j}]+arr[${i}] = ${dpArr[j]}+${a[i]} → <b>${newVal}</b> (优于 ${prev})`
+          });
+        } else {
+          result.push({
+            type: 'no_update', i, j,
+            dp: [...dpArr],
+            codeHl: ['cmp', 'upd'],
+            msg: `<span class="tag tag-cmp">SKIP</span> arr[${j}]=${a[j]} &lt; arr[${i}]=${a[i]}，但 dp[${j}]+arr[${i}]=${newVal} ≤ 当前 dp[${i}]=${prev}`
+          });
+        }
+      } else {
+        result.push({
+          type: 'skip', i, j,
+          dp: [...dpArr],
+          codeHl: ['cmp'],
+          msg: `<span class="tag tag-skip">SKIP</span> arr[${j}]=${a[j]} ≥ arr[${i}]=${a[i]}，不满足递增条件`
+        });
+      }
+    }
+
+    ans = Math.max(ans, dpArr[i]);
+    result.push({
+      type: 'ans_update', i, j: -1,
+      dp: [...dpArr],
+      ans,
+      codeHl: ['ans'],
+      msg: `<span class="tag tag-ans">ANS</span> 更新 ans = max(ans, dp[${i}]) = <b>${ans}</b>`
+    });
+  }
+
+  result.push({ type: 'done', dp: [...dpArr], ans, codeHl: [], msg: `<span class="tag tag-ans">DONE</span> 最终答案 = <b>${ans}</b>` });
+  return result;
+}
+
+// ─── Render ──────────────────────────────────────────────────────
+function renderCells() {
+  const n = arr.length;
+  const arrRow = document.getElementById('arrRow');
+  const dpRow = document.getElementById('dpRow');
+  arrRow.innerHTML = '';
+  dpRow.innerHTML = '';
+  for (let k = 0; k < n; k++) {
+    const ac = document.createElement('div');
+    ac.className = 'cell';
+    ac.id = `arr-${k}`;
+    ac.innerHTML = `<span class="val">${arr[k]}</span><span class="idx">[${k}]</span>`;
+    arrRow.appendChild(ac);
+
+    const dc = document.createElement('div');
+    dc.className = 'cell';
+    dc.id = `dp-${k}`;
+    dc.innerHTML = `<span class="val" id="dpval-${k}">—</span><span class="idx">[${k}]</span>`;
+    dpRow.appendChild(dc);
+  }
+}
+
+function applyStep(s) {
+  const n = arr.length;
+
+  // reset all
+  for (let k = 0; k < n; k++) {
+    const ac = document.getElementById(`arr-${k}`);
+    const dc = document.getElementById(`dp-${k}`);
+    ac.className = 'cell' + (k < s.i ? ' done' : '');
+    dc.className = 'cell' + (k < s.i ? ' done' : '');
+  }
+
+  // update dp values shown
+  for (let k = 0; k < n; k++) {
+    const el = document.getElementById(`dpval-${k}`);
+    el.textContent = s.dp[k] !== null ? s.dp[k] : '—';
+  }
+
+  // highlight active i
+  if (s.i >= 0 && s.i < n) {
+    document.getElementById(`arr-${s.i}`).classList.add('active');
+    document.getElementById(`dp-${s.i}`).classList.add('active');
+  }
+
+  // highlight j
+  if (s.j >= 0 && s.j < n) {
+    document.getElementById(`arr-${s.j}`).classList.add('compare');
+    document.getElementById(`dp-${s.j}`).classList.add('compare');
+  }
+
+  // if update type — mark j as used
+  if ((s.type === 'update') && s.j >= 0) {
+    document.getElementById(`arr-${s.j}`).classList.add('used');
+    document.getElementById(`dp-${s.j}`).classList.add('used');
+  }
+
+  // find best dp so far
+  let bestIdx = -1, bestVal = -Infinity;
+  for (let k = 0; k <= s.i; k++) {
+    if (s.dp[k] !== null && s.dp[k] > bestVal) { bestVal = s.dp[k]; bestIdx = k; }
+  }
+  if (bestIdx >= 0 && s.i >= 0) {
+    document.getElementById(`dp-${bestIdx}`).classList.add('best');
+  }
+
+  // draw arrow
+  drawArrow(s);
+
+  // code
+  renderCode(s.codeHl || []);
+
+  // log
+  const log = document.getElementById('logPanel');
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  entry.innerHTML = s.msg;
+  log.appendChild(entry);
+  log.scrollTop = log.scrollHeight;
+
+  // answer bar
+  const bar = document.getElementById('answerBar');
+  if (s.ans !== undefined) {
+    bar.classList.add('show');
+    document.getElementById('ansVal').textContent = s.ans;
+  }
+
+  // step info
+  document.getElementById('stepInfo').textContent = `Step ${stepIdx + 1} / ${steps.length}`;
+}
+
+function drawArrow(s) {
+  const svg = document.getElementById('arrow-layer');
+  svg.innerHTML = '';
+  if (s.type !== 'update' || s.j < 0) return;
+
+  const fromEl = document.getElementById(`arr-${s.j}`);
+  const toEl = document.getElementById(`arr-${s.i}`);
+  if (!fromEl || !toEl) return;
+
+  const wrapper = fromEl.closest('.array-wrapper');
+  const wRect = wrapper.getBoundingClientRect();
+  const fRect = fromEl.getBoundingClientRect();
+  const tRect = toEl.getBoundingClientRect();
+
+  const fx = fRect.left - wRect.left + fRect.width / 2;
+  const tx = tRect.left - wRect.left + tRect.width / 2;
+  const y0 = -8;
+  const cy = -38;
+
+  svg.setAttribute('height', 60);
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', `M${fx},${y0} C${fx},${cy} ${tx},${cy} ${tx},${y0}`);
+  path.setAttribute('fill', 'none');
+  path.setAttribute('stroke', 'var(--accent3)');
+  path.setAttribute('stroke-width', '2');
+  path.setAttribute('stroke-dasharray', '4 3');
+  path.setAttribute('marker-end', 'url(#arrow)');
+
+  const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+  defs.innerHTML = `<marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+    <path d="M0,0 L0,6 L8,3 z" fill="var(--accent3)"/>
+  </marker>`;
+  svg.appendChild(defs);
+  svg.appendChild(path);
+}
+
+// ─── Controls ────────────────────────────────────────────────────
+function init() {
+  const raw = document.getElementById('arrInput').value.trim();
+  arr = raw.split(/\s+/).map(Number).filter(v => !isNaN(v));
+  if (arr.length === 0) return;
+  dp = new Array(arr.length).fill(null);
+  steps = buildSteps(arr);
+  stepIdx = 0;
+  document.getElementById('logPanel').innerHTML = '';
+  document.getElementById('answerBar').classList.remove('show');
+  renderCells();
+  renderCode([]);
+  document.getElementById('stepInfo').textContent = `Step 0 / ${steps.length}`;
+}
+
+function stepFwd() {
+  if (stepIdx >= steps.length) return;
+  applyStep(steps[stepIdx]);
+  stepIdx++;
+}
+
+function stepBack() {
+  if (stepIdx <= 0) return;
+  stepIdx = Math.max(0, stepIdx - 2);
+  // rebuild from scratch up to stepIdx
+  document.getElementById('logPanel').innerHTML = '';
+  document.getElementById('answerBar').classList.remove('show');
+  renderCells();
+  renderCode([]);
+  const target = stepIdx;
+  stepIdx = 0;
+  for (let k = 0; k <= target; k++) {
+    if (k < steps.length) {
+      applyStep(steps[k]);
+      stepIdx = k + 1;
+    }
+  }
+}
+
+function resetVis() {
+  stopPlay();
+  stepIdx = 0;
+  document.getElementById('logPanel').innerHTML = '';
+  document.getElementById('answerBar').classList.remove('show');
+  renderCells();
+  renderCode([]);
+  document.getElementById('stepInfo').textContent = `Step 0 / ${steps.length}`;
+}
+
+function togglePlay() {
+  if (playing) { stopPlay(); return; }
+  playing = true;
+  document.getElementById('btnPlay').textContent = '⏸ 暂停';
+  scheduleNext();
+}
+
+function stopPlay() {
+  playing = false;
+  clearTimeout(timer);
+  document.getElementById('btnPlay').textContent = '▶ 自动演示';
+}
+
+function scheduleNext() {
+  if (!playing) return;
+  const speed = parseInt(document.getElementById('speedSlider').value);
+  const delay = [900, 650, 420, 250, 100][speed - 1];
+  timer = setTimeout(() => {
+    if (stepIdx >= steps.length) { stopPlay(); return; }
+    stepFwd();
+    scheduleNext();
+  }, delay);
+}
+
+function loadPreset(idx) {
+  document.getElementById('arrInput').value = PRESETS[idx].join(' ');
+  init();
+}
+
+// ─── Boot ─────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>

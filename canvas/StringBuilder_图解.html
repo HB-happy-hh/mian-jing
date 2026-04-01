@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<title>StringBuilder 图解</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Serif+SC:wght@400;700;900&display=swap');
+:root{
+  --bg:#0d1117; --sur:#161b22; --bor:#30363d;
+  --y:#f7c948; --b:#58a6ff; --g:#3fb950; --r:#f85149;
+  --mu:#8b949e; --tx:#e6edf3; --cb:#1f2937; --pu:#d2a8ff;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font-family:'Noto Serif SC',serif;padding:40px 24px 80px;min-height:100vh}
+.page{max-width:900px;margin:0 auto}
+/* header */
+header{border-left:5px solid var(--y);padding-left:20px;margin-bottom:44px}
+header .tag{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--y);letter-spacing:3px;text-transform:uppercase;margin-bottom:8px}
+header h1{font-size:32px;font-weight:900}
+header p{color:var(--mu);margin-top:8px;font-size:14px;line-height:1.8}
+/* section title */
+.st{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:4px;text-transform:uppercase;color:var(--y);margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.st::after{content:'';flex:1;height:1px;background:var(--bor)}
+section{margin-bottom:44px}
+/* card */
+.card{background:var(--sur);border:1px solid var(--bor);border-radius:12px;padding:20px 24px}
+/* compare grid */
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:28px}
+@media(max-width:600px){.cmp{grid-template-columns:1fr}}
+.cmp-card{background:var(--sur);border:1px solid var(--bor);border-radius:10px;padding:18px}
+.cmp-card h4{font-size:13px;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.dot-r{background:var(--r)} .dot-g{background:var(--g)}
+.cmp-card p{font-size:12.5px;color:var(--mu);line-height:1.85}
+pre{font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.85;background:var(--cb);border-radius:8px;padding:14px 16px;overflow-x:auto;margin-top:10px}
+.kw{color:#ff7b72}.fn{color:var(--pu)}.cm{color:var(--mu);font-style:italic}.st2{color:#a5d6ff}.nm{color:var(--y)}
+
+/* ── Memory demo ── */
+.mem-section{background:var(--sur);border:1px solid var(--bor);border-radius:12px;padding:24px;margin-bottom:28px}
+.mem-controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;align-items:center}
+.mem-label{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--mu)}
+.op-btn{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;padding:6px 14px;border-radius:7px;border:1.5px solid var(--bor);background:transparent;color:var(--tx);cursor:pointer;transition:all .15s}
+.op-btn:hover:not(:disabled){border-color:var(--y);color:var(--y)}
+.op-btn:disabled{opacity:.35;cursor:default}
+.op-btn.active{background:var(--y);color:#000;border-color:var(--y)}
+.mem-canvas-wrap{overflow-x:auto}
+#memCanvas{display:block;border-radius:8px}
+.mem-log{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--mu);margin-top:12px;min-height:22px}
+.mem-log span{color:var(--tx)}
+
+/* ── Methods table ── */
+.mt{width:100%;border-collapse:collapse}
+.mt th,.mt td{font-family:'JetBrains Mono',monospace;font-size:12px;padding:9px 14px;border-bottom:1px solid var(--bor);text-align:left;vertical-align:top}
+.mt th{color:var(--y);background:var(--cb)}
+.mt tr:last-child td{border-bottom:none}
+.mt td:first-child{color:var(--b);white-space:nowrap}
+.mt td:nth-child(2){color:var(--g);white-space:nowrap}
+.mt .desc{color:var(--mu);font-family:'Noto Serif SC',serif;font-size:13px}
+/* playback */
+.play-wrap{background:var(--sur);border:1px solid var(--bor);border-radius:12px;padding:24px;margin-bottom:28px}
+.play-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.pbtn{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;padding:7px 16px;border-radius:7px;border:none;cursor:pointer;transition:opacity .15s}
+.pbtn-blue{background:var(--b);color:#000}.pbtn-blue:hover{opacity:.85}
+.pbtn-grey{background:transparent;color:var(--tx);border:1.5px solid var(--bor)}.pbtn-grey:hover:not(:disabled){border-color:var(--y);color:var(--y)}
+.pbtn:disabled{opacity:.3;cursor:default}
+.step-info{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mu);min-width:50px;text-align:center}
+#playCanvas{display:block;border-radius:8px;width:100%}
+.play-desc{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--mu);margin-top:10px;min-height:22px;background:var(--cb);padding:8px 14px;border-radius:6px}
+.play-desc span{color:var(--y)}
+/* info chips */
+.chips{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.chip{font-family:'JetBrains Mono',monospace;font-size:11.5px;padding:5px 14px;border-radius:20px}
+.chip-b{background:rgba(88,166,255,.1);border:1px solid rgba(88,166,255,.3);color:var(--b)}
+.chip-g{background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.3);color:var(--g)}
+.chip-y{background:rgba(247,201,72,.1);border:1px solid rgba(247,201,72,.3);color:var(--y)}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header>
+  <div class="tag">Java · java.lang · StringBuilder</div>
+  <h1>StringBuilder 图解</h1>
+  <p>String 不可变，每次拼接都产生新对象；StringBuilder 内部维护一块可扩展的字符数组，<br>原地修改，零拷贝，是高频字符串操作的首选。</p>
+</header>
+
+<!-- 1. String vs StringBuilder -->
+<section>
+  <div class="st">String vs StringBuilder</div>
+  <div class="cmp">
+    <div class="cmp-card">
+      <h4><span class="dot dot-r"></span>String — 不可变</h4>
+      <p>每次 <code>+</code> 都新建一个对象，旧对象等待 GC 回收。<br>循环拼接 n 次 → 产生 n 个临时对象，O(n²) 时间。</p>
+<pre><span class="kw">String</span> s = <span class="st2">""</span>;
+s = s + <span class="st2">"("</span>;   <span class="cm">// 新对象 "("</span>
+s = s + <span class="st2">")"</span>;   <span class="cm">// 新对象 "()"，旧的丢弃</span>
+<span class="cm">// 每步都复制整个字符串！</span></pre>
+    </div>
+    <div class="cmp-card">
+      <h4><span class="dot dot-g"></span>StringBuilder — 可变</h4>
+      <p>内部维护 <code>char[]</code>，<code>append</code> 直接写入，容量不够才扩容（×2）。<br>循环拼接 n 次 → O(n) 时间，O(1) 均摊每次操作。</p>
+<pre><span class="kw">StringBuilder</span> sb = <span class="kw">new</span> <span class="fn">StringBuilder</span>();
+sb.<span class="fn">append</span>(<span class="st2">'('</span>);  <span class="cm">// 原地写入，无新对象</span>
+sb.<span class="fn">append</span>(<span class="st2">')'</span>);  <span class="cm">// 继续写入同一块内存</span>
+String s = sb.<span class="fn">toString</span>(); <span class="cm">// 最后才生成 String</span></pre>
+    </div>
+  </div>
+</section>
+
+<!-- 2. 内存模型动画 -->
+<section>
+  <div class="st">内存模型演示</div>
+  <div class="mem-section">
+    <div class="mem-controls">
+      <span class="mem-label">操作：</span>
+      <button class="op-btn" onclick="memOp('append','(')">append('(')</button>
+      <button class="op-btn" onclick="memOp('append',')')">append(')')</button>
+      <button class="op-btn" onclick="memOp('delete')">deleteCharAt(末尾)</button>
+      <button class="op-btn" onclick="memOp('insert')">insert(0,'X')</button>
+      <button class="op-btn" onclick="memOp('reverse')">reverse()</button>
+      <button class="op-btn" onclick="memOp('reset')" style="margin-left:auto;border-color:var(--r);color:var(--r)">↺ 重置</button>
+    </div>
+    <div class="mem-canvas-wrap">
+      <canvas id="memCanvas" height="110"></canvas>
+    </div>
+    <div class="mem-log" id="memLog">← 点击上方按钮，观察内部 char[] 的变化</div>
+  </div>
+</section>
+
+<!-- 3. 回溯演示 -->
+<section>
+  <div class="st">回溯中的 append / deleteCharAt</div>
+  <div class="play-wrap">
+    <div class="play-row">
+      <button class="pbtn pbtn-grey" id="bPrev" onclick="bStep(-1)">◀</button>
+      <span class="step-info" id="bInfo">0 / 0</span>
+      <button class="pbtn pbtn-grey" id="bNext" onclick="bStep(1)">▶</button>
+      <button class="pbtn pbtn-blue" id="bPlay" onclick="bPlay()" style="margin-left:8px">⏵ 自动</button>
+      <button class="pbtn pbtn-grey" onclick="bReset()" style="margin-left:4px">↺</button>
+      <span class="mem-label" style="margin-left:12px">n = 2 的回溯全过程</span>
+    </div>
+    <canvas id="playCanvas" height="260"></canvas>
+    <div class="play-desc" id="playDesc">点击 ▶ 开始逐步演示</div>
+  </div>
+</section>
+
+<!-- 4. 常用 API -->
+<section>
+  <div class="st">常用 API 速查</div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <table class="mt">
+      <thead><tr><th>方法</th><th>返回值</th><th class="desc">说明</th></tr></thead>
+      <tbody>
+        <tr><td>append(x)</td><td>StringBuilder</td><td class="desc">追加任意类型（char/String/int…）到末尾，返回 this（支持链式调用）</td></tr>
+        <tr><td>deleteCharAt(i)</td><td>StringBuilder</td><td class="desc">删除索引 i 处的字符，回溯撤销时常用</td></tr>
+        <tr><td>delete(s,e)</td><td>StringBuilder</td><td class="desc">删除 [s, e) 范围内的字符</td></tr>
+        <tr><td>insert(i,x)</td><td>StringBuilder</td><td class="desc">在索引 i 处插入字符/字符串</td></tr>
+        <tr><td>reverse()</td><td>StringBuilder</td><td class="desc">原地反转所有字符</td></tr>
+        <tr><td>charAt(i)</td><td>char</td><td class="desc">获取索引 i 处的字符，O(1)</td></tr>
+        <tr><td>setCharAt(i,c)</td><td>void</td><td class="desc">修改索引 i 处的字符</td></tr>
+        <tr><td>length()</td><td>int</td><td class="desc">当前字符数（≠ 内部数组容量）</td></tr>
+        <tr><td>toString()</td><td>String</td><td class="desc">将缓冲区内容转为不可变 String，通常在最终收集结果时调用</td></tr>
+        <tr><td>indexOf(s)</td><td>int</td><td class="desc">返回子串第一次出现的位置，-1 表示不存在</td></tr>
+        <tr><td>substring(s,e)</td><td>String</td><td class="desc">截取 [s, e) 的子串（不修改原对象）</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="chips">
+    <div class="chip chip-b">append 链式：sb.append('(').append(')')</div>
+    <div class="chip chip-g">初始容量默认 16，不够时自动扩容 ×2+2</div>
+    <div class="chip chip-y">线程不安全；多线程场景用 StringBuffer</div>
+  </div>
+</section>
+
+</div>
+
+<script>
+// ══════════════════════════════════════════
+//  内存模型演示
+// ══════════════════════════════════════════
+const CAPACITY = 16;
+let bufArr = new Array(CAPACITY).fill(null); // null = 空槽
+let bufLen = 0;
+let lastOp = '';
+
+function memOp(op, ch) {
+  const log = document.getElementById('memLog');
+  if (op === 'reset') {
+    bufArr = new Array(CAPACITY).fill(null);
+    bufLen = 0;
+    lastOp = '';
+    log.innerHTML = '已重置';
+    drawMem();
+    return;
+  }
+  if (op === 'append') {
+    if (bufLen < CAPACITY) {
+      bufArr[bufLen++] = ch;
+      lastOp = `append('${ch}')  →  length = ${bufLen}`;
+      log.innerHTML = `<span>${lastOp}</span>`;
+    } else {
+      log.innerHTML = `<span style="color:var(--r)">容量已满（${CAPACITY}）</span>`;
+    }
+  } else if (op === 'delete') {
+    if (bufLen > 0) {
+      const removed = bufArr[--bufLen];
+      bufArr[bufLen] = null;
+      lastOp = `deleteCharAt(${bufLen})  删除 '${removed}'  →  length = ${bufLen}`;
+      log.innerHTML = `<span>${lastOp}</span>`;
+    } else {
+      log.innerHTML = `<span style="color:var(--r)">已空，无法删除</span>`;
+    }
+  } else if (op === 'insert') {
+    if (bufLen < CAPACITY) {
+      for (let i = bufLen; i > 0; i--) bufArr[i] = bufArr[i-1];
+      bufArr[0] = 'X';
+      bufLen++;
+      lastOp = `insert(0,'X')  →  length = ${bufLen}`;
+      log.innerHTML = `<span>${lastOp}</span>`;
+    }
+  } else if (op === 'reverse') {
+    const content = bufArr.slice(0, bufLen).reverse();
+    for (let i = 0; i < bufLen; i++) bufArr[i] = content[i];
+    lastOp = `reverse()  →  "${bufArr.slice(0, bufLen).join('')}"`;
+    log.innerHTML = `<span>${lastOp}</span>`;
+  }
+  drawMem();
+}
+
+function drawMem() {
+  const canvas = document.getElementById('memCanvas');
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.parentElement.clientWidth;
+  canvas.width  = W * dpr;
+  canvas.height = 110 * dpr;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = '110px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, 110);
+
+  const cellW = Math.min(44, (W - 40) / CAPACITY);
+  const cellH = 44;
+  const startX = (W - cellW * CAPACITY) / 2;
+  const startY = 30;
+
+  // label
+  ctx.font = 'bold 11px JetBrains Mono, monospace';
+  ctx.fillStyle = '#8b949e';
+  ctx.textAlign = 'left';
+  ctx.fillText('char[]  内部数组', startX, 18);
+  ctx.textAlign = 'right';
+  ctx.fillText(`capacity = ${CAPACITY}`, startX + cellW * CAPACITY, 18);
+
+  for (let i = 0; i < CAPACITY; i++) {
+    const x = startX + i * cellW;
+    const isActive = i < bufLen;
+    const isLast = i === bufLen - 1;
+
+    // cell bg
+    ctx.fillStyle = isActive
+      ? (isLast ? 'rgba(247,201,72,.22)' : 'rgba(88,166,255,.12)')
+      : 'rgba(255,255,255,.03)';
+    ctx.strokeStyle = isActive
+      ? (isLast ? '#f7c948' : '#58a6ff')
+      : '#30363d';
+    ctx.lineWidth = isLast ? 2 : 1;
+    ctx.beginPath();
+    ctx.roundRect(x + 2, startY, cellW - 4, cellH, 4);
+    ctx.fill();
+    ctx.stroke();
+
+    // char
+    if (bufArr[i] !== null) {
+      ctx.font = `bold ${cellW > 30 ? 16 : 13}px JetBrains Mono, monospace`;
+      ctx.textAlign = 'center';
+      ctx.fillStyle = isLast ? '#f7c948' : '#e6edf3';
+      ctx.fillText(bufArr[i], x + cellW / 2, startY + cellH / 2 + 6);
+    }
+
+    // index
+    ctx.font = '9px JetBrains Mono, monospace';
+    ctx.fillStyle = '#555';
+    ctx.textAlign = 'center';
+    ctx.fillText(i, x + cellW / 2, startY + cellH + 12);
+  }
+
+  // length arrow
+  if (bufLen > 0) {
+    const ax = startX + bufLen * cellW;
+    ctx.beginPath();
+    ctx.moveTo(ax + 2, startY - 6);
+    ctx.lineTo(ax + 2, startY + 2);
+    ctx.strokeStyle = '#f7c948';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.font = 'bold 10px JetBrains Mono, monospace';
+    ctx.fillStyle = '#f7c948';
+    ctx.textAlign = 'left';
+    ctx.fillText(`length=${bufLen}`, ax + 6, startY - 2);
+  }
+}
+
+// ══════════════════════════════════════════
+//  回溯演示
+// ══════════════════════════════════════════
+// Pre-build the steps for n=2 backtracking
+const STEPS = buildSteps(2);
+let stepIdx = 0;
+let bTimer  = null;
+
+function buildSteps(n) {
+  const steps = [];
+  function bt(cur, open, close) {
+    steps.push({ cur: cur.slice(), open, close, action: 'visit' });
+    if (cur.length === 2*n) {
+      steps.push({ cur: cur.slice(), open, close, action: 'found' });
+      return;
+    }
+    if (open < n) {
+      steps.push({ cur: cur.slice(), open, close, action: 'append', ch: '(' });
+      cur.push('(');
+      bt(cur, open+1, close);
+      steps.push({ cur: cur.slice(), open: open+1, close, action: 'delete' });
+      cur.pop();
+    }
+    if (close < open) {
+      steps.push({ cur: cur.slice(), open, close, action: 'append', ch: ')' });
+      cur.push(')');
+      bt(cur, open, close+1);
+      steps.push({ cur: cur.slice(), open, close: close+1, action: 'delete' });
+      cur.pop();
+    }
+  }
+  bt([], 0, 0);
+  return steps;
+}
+
+function bStep(delta) {
+  if (bTimer) { clearInterval(bTimer); bTimer = null; }
+  stepIdx = Math.max(0, Math.min(STEPS.length - 1, stepIdx + delta));
+  drawPlay();
+  updateBUI();
+}
+
+function bPlay() {
+  if (bTimer) { clearInterval(bTimer); bTimer = null; return; }
+  if (stepIdx >= STEPS.length - 1) { stepIdx = 0; drawPlay(); updateBUI(); }
+  bTimer = setInterval(() => {
+    stepIdx++;
+    drawPlay();
+    updateBUI();
+    if (stepIdx >= STEPS.length - 1) { clearInterval(bTimer); bTimer = null; }
+  }, 600);
+}
+
+function bReset() {
+  if (bTimer) { clearInterval(bTimer); bTimer = null; }
+  stepIdx = 0;
+  drawPlay();
+  updateBUI();
+}
+
+function updateBUI() {
+  document.getElementById('bInfo').textContent = `${stepIdx + 1} / ${STEPS.length}`;
+  document.getElementById('bPrev').disabled = stepIdx === 0;
+  document.getElementById('bNext').disabled = stepIdx >= STEPS.length - 1;
+}
+
+const ACTION_DESC = {
+  visit:  (s) => `访问节点：当前 sb = "<span>${s.cur.join('')||'(空)'}</span>"，open=${s.open}，close=${s.close}`,
+  append: (s) => `sb.<span>append('${s.ch}')</span> → sb 末尾追加 '${s.ch}'`,
+  delete: (s) => `sb.<span>deleteCharAt(末尾)</span> → 撤销最后一步（回溯）`,
+  found:  (s) => `✓ 找到合法括号串："<span>${s.cur.join('')}</span>"，加入结果集`,
+};
+
+function drawPlay() {
+  const canvas = document.getElementById('playCanvas');
+  const s = STEPS[stepIdx];
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.parentElement.clientWidth - 2;
+  const H = 260;
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+
+  // title
+  ctx.font = 'bold 11px JetBrains Mono, monospace';
+  ctx.fillStyle = '#8b949e';
+  ctx.textAlign = 'left';
+  ctx.fillText('StringBuilder 内部缓冲区', 16, 22);
+
+  // draw buffer cells
+  const cap = 4; // n=2, max 4 chars
+  const cellW = 56, cellH = 48;
+  const bx = (W - cellW * cap) / 2;
+  const by = 36;
+
+  for (let i = 0; i < cap; i++) {
+    const ch = s.cur[i];
+    const isActive = i < s.cur.length;
+    const isLast = i === s.cur.length - 1 && s.action !== 'delete';
+    const isDeleting = s.action === 'delete' && i === s.cur.length - 1 + 1 - 1;
+
+    ctx.fillStyle = isActive
+      ? (s.action === 'found' ? 'rgba(63,185,80,.25)'
+        : isLast && s.action === 'append' ? 'rgba(247,201,72,.25)'
+        : 'rgba(88,166,255,.15)')
+      : 'rgba(255,255,255,.03)';
+    ctx.strokeStyle = isActive
+      ? (s.action === 'found' ? '#3fb950'
+        : isLast && s.action === 'append' ? '#f7c948'
+        : '#58a6ff')
+      : '#30363d';
+    ctx.lineWidth = isActive ? 2 : 1;
+    ctx.beginPath();
+    ctx.roundRect(bx + i*cellW + 3, by, cellW - 6, cellH, 6);
+    ctx.fill();
+    ctx.stroke();
+
+    if (ch !== undefined) {
+      ctx.font = 'bold 22px JetBrains Mono, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = s.action === 'found' ? '#3fb950'
+                    : (isLast && s.action === 'append') ? '#f7c948' : '#e6edf3';
+      ctx.fillText(ch, bx + i*cellW + cellW/2, by + cellH/2 + 8);
+    }
+
+    ctx.font = '10px JetBrains Mono, monospace';
+    ctx.fillStyle = '#444';
+    ctx.textAlign = 'center';
+    ctx.fillText(i, bx + i*cellW + cellW/2, by + cellH + 14);
+  }
+
+  // length indicator
+  ctx.font = 'bold 11px JetBrains Mono, monospace';
+  ctx.fillStyle = '#f7c948';
+  ctx.textAlign = 'left';
+  ctx.fillText(`length = ${s.cur.length}`, bx + cellW * cap + 12, by + cellH/2 + 4);
+
+  // action indicator
+  const actionY = by + cellH + 42;
+  const actionColors = { visit:'#58a6ff', append:'#f7c948', delete:'#f85149', found:'#3fb950' };
+  ctx.font = 'bold 13px JetBrains Mono, monospace';
+  ctx.fillStyle = actionColors[s.action] || '#e6edf3';
+  ctx.textAlign = 'center';
+  const actionText = {
+    visit:'【 访问 】', append:`【 append('${s.ch}') 】`,
+    delete:'【 deleteCharAt(末尾) 】', found:'【 ✓ 找到结果 】'
+  };
+  ctx.fillText(actionText[s.action], W/2, actionY);
+
+  // call stack
+  const stackY = actionY + 28;
+  ctx.font = '11px JetBrains Mono, monospace';
+  ctx.fillStyle = '#8b949e';
+  ctx.textAlign = 'left';
+  ctx.fillText('调用状态', 16, stackY);
+
+  const statW = 160, statH = 32;
+  const sx = (W - statW * 2 - 16) / 2;
+
+  // open counter
+  ctx.fillStyle = 'rgba(88,166,255,.12)';
+  ctx.strokeStyle = '#30363d';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect(sx, stackY + 10, statW, statH, 6); ctx.fill(); ctx.stroke();
+  ctx.font = '12px JetBrains Mono, monospace';
+  ctx.fillStyle = '#58a6ff'; ctx.textAlign = 'center';
+  ctx.fillText(`open = ${s.open}`, sx + statW/2, stackY + 10 + statH/2 + 4);
+
+  // close counter
+  ctx.fillStyle = 'rgba(63,185,80,.12)';
+  ctx.strokeStyle = '#30363d';
+  ctx.beginPath(); ctx.roundRect(sx + statW + 16, stackY + 10, statW, statH, 6); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#3fb950';
+  ctx.fillText(`close = ${s.close}`, sx + statW + 16 + statW/2, stackY + 10 + statH/2 + 4);
+
+  // description
+  document.getElementById('playDesc').innerHTML =
+    ACTION_DESC[s.action](s);
+}
+
+// ══ init ══
+window.addEventListener('load', () => {
+  drawMem();
+  drawPlay();
+  updateBUI();
+});
+window.addEventListener('resize', () => {
+  drawMem();
+  drawPlay();
+});
+</script>
+</body>
+</html>

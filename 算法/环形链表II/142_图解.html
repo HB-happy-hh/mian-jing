@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>142. 环形链表 II — 图解</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Serif+SC:wght@400;700;900&display=swap');
+:root{
+  --bg:#0d1117;--sur:#161b22;--bor:#30363d;
+  --y:#f7c948;--b:#58a6ff;--g:#3fb950;--r:#f85149;
+  --mu:#8b949e;--tx:#e6edf3;--cb:#1f2937;--pu:#d2a8ff;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font-family:'Noto Serif SC',serif;padding:40px 24px 80px;min-height:100vh}
+.page{max-width:920px;margin:0 auto}
+header{border-left:5px solid var(--y);padding-left:20px;margin-bottom:44px}
+header .tag{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--y);letter-spacing:3px;text-transform:uppercase;margin-bottom:8px}
+header h1{font-size:32px;font-weight:900}
+header p{color:var(--mu);margin-top:8px;font-size:14px;line-height:1.8}
+.st{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:4px;text-transform:uppercase;color:var(--y);margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.st::after{content:'';flex:1;height:1px;background:var(--bor)}
+section{margin-bottom:44px}
+.card{background:var(--sur);border:1px solid var(--bor);border-radius:12px;padding:20px 24px}
+pre{font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.85;background:var(--cb);border-radius:8px;padding:14px 16px;overflow-x:auto;margin-top:10px}
+.kw{color:#ff7b72}.fn{color:var(--pu)}.cm{color:var(--mu);font-style:italic}.st2{color:#a5d6ff}.nm{color:var(--y)}
+
+/* ── Controls ── */
+.viz-box{background:var(--sur);border:1px solid var(--bor);border-radius:12px;padding:24px;margin-bottom:28px}
+.ctrl-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:18px}
+.ctrl-label{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mu)}
+.cbtn{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;padding:7px 16px;border-radius:7px;cursor:pointer;transition:all .15s;border:1.5px solid var(--bor);background:transparent;color:var(--tx)}
+.cbtn:hover:not(:disabled){border-color:var(--y);color:var(--y)}
+.cbtn:disabled{opacity:.3;cursor:default}
+.cbtn-blue{background:var(--b);color:#000;border-color:var(--b)}.cbtn-blue:hover{opacity:.85}
+.cbtn-red{border-color:var(--r);color:var(--r)}.cbtn-red:hover{border-color:var(--r)!important;color:var(--r)!important}
+.prog{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mu);min-width:52px;text-align:center}
+#vizCanvas{display:block;width:100%;border-radius:8px}
+.step-desc{background:var(--cb);border:1px solid var(--bor);border-radius:10px;padding:14px 18px;margin-top:14px;min-height:80px}
+.sd-line{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--mu);line-height:1.8;margin-bottom:4px}
+.sd-line:last-child{margin-bottom:0}
+.sd-line code{background:var(--bg);padding:1px 6px;border-radius:4px;color:var(--tx);font-size:11.5px}
+.sd-tag{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px;letter-spacing:.5px;vertical-align:middle;margin-right:6px}
+.tag-y{background:rgba(247,201,72,.18);color:var(--y);border:1px solid rgba(247,201,72,.4)}
+.tag-b{background:rgba(88,166,255,.18);color:var(--b);border:1px solid rgba(88,166,255,.4)}
+.tag-g{background:rgba(63,185,80,.18);color:var(--g);border:1px solid rgba(63,185,80,.4)}
+.tag-r{background:rgba(248,81,73,.18);color:var(--r);border:1px solid rgba(248,81,73,.4)}
+.tag-p{background:rgba(210,168,255,.18);color:var(--pu);border:1px solid rgba(210,168,255,.4)}
+.hi-b{color:var(--b);font-weight:700} .hi-g{color:var(--g);font-weight:700}
+.hi-y{color:var(--y);font-weight:700} .hi-r{color:var(--r);font-weight:700}
+
+/* ── Math proof ── */
+.proof{background:var(--sur);border:1px solid var(--bor);border-radius:12px;padding:24px}
+.proof-row{display:flex;gap:16px;flex-wrap:wrap}
+.proof-col{flex:1;min-width:200px;background:var(--cb);border-radius:8px;padding:16px 18px}
+.proof-col h4{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--y);letter-spacing:2px;margin-bottom:10px;text-transform:uppercase}
+.proof-col p{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--mu);line-height:1.9}
+.proof-col p b{color:var(--tx)}
+.formula{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--y);background:rgba(247,201,72,.08);border:1px solid rgba(247,201,72,.25);border-radius:6px;padding:8px 14px;margin-top:10px;line-height:1.9}
+
+/* ── Code tabs ── */
+.code-section{background:var(--sur);border:1px solid var(--bor);border-radius:14px;overflow:hidden;margin-bottom:28px}
+.code-header{display:flex;justify-content:space-between;align-items:center;padding:11px 18px;border-bottom:1px solid var(--bor);background:var(--cb)}
+.code-header span{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--mu)}
+.code-tabs{display:flex;gap:6px}
+.code-tab{font-family:'JetBrains Mono',monospace;font-size:11px;padding:4px 12px;border-radius:6px;cursor:pointer;border:1px solid var(--bor);background:transparent;color:var(--mu);transition:all .15s}
+.code-tab.active{background:var(--y);color:#000;border-color:var(--y)}
+pre.tab{display:none;margin-top:0;border-radius:0}
+pre.tab.active{display:block}
+
+/* ── Complexity ── */
+.ct{width:100%;border-collapse:collapse}
+.ct th,.ct td{font-family:'JetBrains Mono',monospace;font-size:12px;padding:9px 14px;border-bottom:1px solid var(--bor);text-align:left}
+.ct th{color:var(--y);background:var(--cb)}
+.ct tr:last-child td{border-bottom:none}
+.ct td:first-child{color:var(--b)}
+.ct .desc{color:var(--mu);font-family:'Noto Serif SC',serif;font-size:13px}
+.chips{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.chip{font-family:'JetBrains Mono',monospace;font-size:11.5px;padding:5px 14px;border-radius:20px}
+.chip-b{background:rgba(88,166,255,.1);border:1px solid rgba(88,166,255,.3);color:var(--b)}
+.chip-g{background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.3);color:var(--g)}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header>
+  <div class="tag">LeetCode · 142 · Medium · Two Pointers</div>
+  <h1>环形链表 II</h1>
+  <p>给定链表头节点，返回链表开始入环的第一个节点，无环返回 null。<br>
+     核心：Floyd 判圈算法 —— 数学推导出"相遇点到入环点"的距离恰好等于"head 到入环点"的距离。</p>
+</header>
+
+<!-- 交互演示 -->
+<section>
+  <div class="st">Floyd 算法逐步演示</div>
+  <div class="viz-box">
+    <div class="ctrl-row">
+      <span class="ctrl-label">示例：</span>
+      <button class="cbtn" onclick="loadCase(0)">3→2→0→-4（环）</button>
+      <button class="cbtn" onclick="loadCase(1)">1→2（环）</button>
+      <button class="cbtn" onclick="loadCase(2)">1（无环）</button>
+      <button class="cbtn cbtn-blue" id="playBtn" onclick="startPlay()" style="margin-left:auto">⏵ 自动播放</button>
+      <button class="cbtn" id="prevBtn" onclick="doStep(-1)">◀</button>
+      <span class="prog" id="progLabel">— / —</span>
+      <button class="cbtn" id="nextBtn" onclick="doStep(1)">▶</button>
+      <button class="cbtn cbtn-red" onclick="doReset()">↺</button>
+    </div>
+    <canvas id="vizCanvas" height="220"></canvas>
+    <div class="step-desc" id="stepDesc"><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--mu)">选择示例，点击 ▶ 开始</span></div>
+  </div>
+</section>
+
+<!-- 数学推导 -->
+<section>
+  <div class="st">数学推导：为什么第二阶段能找到入环点</div>
+  <div class="proof">
+    <div class="proof-row">
+      <div class="proof-col">
+        <h4>定义变量</h4>
+        <p>
+          <b>a</b> = head 到入环点的距离<br>
+          <b>b</b> = 入环点到相遇点的距离<br>
+          <b>c</b> = 相遇点沿环回到入环点的距离<br>
+          环长 = b + c
+        </p>
+      </div>
+      <div class="proof-col">
+        <h4>第一阶段相遇时</h4>
+        <p>
+          slow 走了：<b>a + b</b><br>
+          fast 走了：<b>a + b + k(b+c)</b><br>
+          fast = 2 × slow：<br>
+          2(a+b) = a+b+k(b+c)
+        </p>
+        <div class="formula">a + b = k(b+c)<br>a = k(b+c) - b<br>a = (k-1)(b+c) + c</div>
+      </div>
+      <div class="proof-col">
+        <h4>关键结论（k=1）</h4>
+        <p>
+          <b>a = c</b><br><br>
+          head 到入环点 = 相遇点到入环点<br><br>
+          所以：一个指针从 head 出发，一个从相遇点出发，同速走，必在入环点相遇！
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 代码 -->
+<section>
+  <div class="st">代码实现</div>
+  <div class="code-section">
+    <div class="code-header">
+      <span>DetectCycle.java</span>
+      <div class="code-tabs">
+        <button class="code-tab active" onclick="showTab(0)">Floyd 快慢指针</button>
+        <button class="code-tab" onclick="showTab(1)">HashSet</button>
+      </div>
+    </div>
+<pre class="tab active"><span class="kw">public</span> ListNode <span class="fn">detectCycle</span>(ListNode head) {
+    ListNode slow = head, fast = head;
+
+    <span class="cm">// 第一阶段：判断是否有环，找相遇点</span>
+    <span class="kw">while</span> (fast != <span class="kw">null</span> && fast.next != <span class="kw">null</span>) {
+        slow = slow.next;
+        fast = fast.next.next;
+        <span class="kw">if</span> (slow == fast) {
+            <span class="cm">// 第二阶段：找入环点（a = c）</span>
+            ListNode ptr = head;
+            <span class="kw">while</span> (ptr != slow) {
+                ptr  = ptr.next;
+                slow = slow.next;
+            }
+            <span class="kw">return</span> ptr;  <span class="cm">// 入环点</span>
+        }
+    }
+    <span class="kw">return null</span>;  <span class="cm">// 无环</span>
+}</pre>
+<pre class="tab"><span class="kw">public</span> ListNode <span class="fn">detectCycleHashSet</span>(ListNode head) {
+    Set&lt;ListNode&gt; visited = <span class="kw">new</span> HashSet&lt;&gt;();
+    ListNode cur = head;
+    <span class="kw">while</span> (cur != <span class="kw">null</span>) {
+        <span class="kw">if</span> (visited.contains(cur)) <span class="kw">return</span> cur; <span class="cm">// 首次重复 = 入环点</span>
+        visited.add(cur);
+        cur = cur.next;
+    }
+    <span class="kw">return null</span>;
+}</pre>
+  </div>
+</section>
+
+<!-- 复杂度 -->
+<section>
+  <div class="st">复杂度分析</div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <table class="ct">
+      <thead><tr><th>方法</th><th>时间</th><th>空间</th><th class="desc">说明</th></tr></thead>
+      <tbody>
+        <tr><td>Floyd 快慢指针</td><td>O(n)</td><td>O(1)</td><td class="desc">两个指针，无额外空间，面试首选</td></tr>
+        <tr><td>HashSet</td><td>O(n)</td><td>O(n)</td><td class="desc">直观易理解，但空间换时间</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="chips">
+    <div class="chip chip-b">fast = slow 时必在环内（fast 比 slow 多走整数圈）</div>
+    <div class="chip chip-g">a = c 是数学必然，与链表长度、环位置无关</div>
+  </div>
+</section>
+
+</div>
+<script>
+// ══════════════════════════════════════════
+//  数据定义
+// ══════════════════════════════════════════
+const CASES = [
+  // case 0: 3->2->0->-4, cycle at index 1 (value 2)
+  { vals:[3,2,0,-4], cycleIdx:1 },
+  // case 1: 1->2, cycle at index 0
+  { vals:[1,2], cycleIdx:0 },
+  // case 2: 1, no cycle
+  { vals:[1], cycleIdx:-1 },
+];
+
+let caseIdx   = 0;
+let steps     = [];
+let stepIdx   = 0;
+let playTimer = null;
+
+// ══════════════════════════════════════════
+//  Build simulation steps
+// ══════════════════════════════════════════
+function buildSteps(vals, cycleIdx) {
+  const n = vals.length;
+  // Build linked list as index array
+  // next[i] = i+1 for normal, cycleIdx for tail
+  const next = vals.map((_, i) => i + 1 < n ? i + 1 : (cycleIdx >= 0 ? cycleIdx : -1));
+
+  const st = [];
+
+  // Phase 0: initial state
+  st.push({ phase:0, slow:0, fast:0, ptr:-1, meet:-1, desc:'init' });
+
+  if (cycleIdx < 0) {
+    // No cycle: fast reaches null
+    let slow = 0, fast = 0;
+    for (let iter = 0; iter < n * 2 + 4; iter++) {
+      const fn = next[fast];
+      const fn2 = fn !== -1 ? next[fn] : -1;
+      slow = next[slow];
+      fast = fn2;
+      st.push({ phase:1, slow, fast:(fast===-1?-2:fast), ptr:-1, meet:-1, desc:'walk', iter:iter+1 });
+      if (slow === -1 || fast === -1 || fast === -2) break;
+    }
+    st.push({ phase:3, slow:-1, fast:-2, ptr:-1, meet:-1, desc:'nocycle' });
+    return { steps:st, next, hasCycle:false };
+  }
+
+  // Has cycle: run Floyd
+  let slow = 0, fast = 0, meet = -1;
+  for (let iter = 0; iter < n * 3; iter++) {
+    slow = next[slow];
+    const fn = next[fast];
+    fast = fn !== -1 ? next[fn] : -1;
+    if (fast === -1) { meet = -1; break; }
+    st.push({ phase:1, slow, fast, ptr:-1, meet:-1, desc:'walk', iter:iter+1 });
+    if (slow === fast) { meet = slow; break; }
+  }
+
+  // Phase 2: ptr from head, slow from meet
+  if (meet >= 0) {
+    st.push({ phase:2, slow:meet, fast:-2, ptr:0, meet, desc:'phase2_start' });
+    let ptr = 0;
+    let sl  = meet;
+    for (let iter = 0; iter < n * 2; iter++) {
+      ptr = next[ptr];
+      sl  = next[sl];
+      st.push({ phase:2, slow:sl, fast:-2, ptr, meet, desc:'phase2_walk', iter:iter+1 });
+      if (ptr === sl) break;
+    }
+    // final
+    st.push({ phase:3, slow:sl, fast:-2, ptr:sl, meet, desc:'found' });
+  }
+
+  return { steps:st, next, hasCycle:true };
+}
+
+// ══════════════════════════════════════════
+//  Layout helpers
+// ══════════════════════════════════════════
+// We draw the list as: straight nodes + a curved arc back
+function getLayout(vals, cycleIdx, W, H) {
+  const n = vals.length;
+  const r = Math.min(26, (W - 80) / (n * 2.8));
+  const nodeW = r * 2 + 20;
+  const totalW = n * nodeW;
+  const startX = (W - totalW) / 2 + r;
+  const baseY  = cycleIdx >= 0 ? H * 0.38 : H / 2;
+
+  const nodes = vals.map((v, i) => ({
+    x: startX + i * nodeW,
+    y: baseY,
+    r,
+    val: v,
+    idx: i
+  }));
+
+  return { nodes, r, baseY };
+}
+
+// ══════════════════════════════════════════
+//  Draw
+// ══════════════════════════════════════════
+let simData = null;
+
+function draw() {
+  const canvas = document.getElementById('vizCanvas');
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.parentElement.clientWidth - 4;
+  const H = 220;
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+
+  if (!simData) return;
+  const { steps, next, hasCycle } = simData;
+  const s = steps[stepIdx];
+  const vals = CASES[caseIdx].vals;
+  const cycleIdx = CASES[caseIdx].cycleIdx;
+  const { nodes, r, baseY } = getLayout(vals, cycleIdx, W, H);
+  const n = vals.length;
+
+  // ── Draw edges (arrows between nodes)
+  for (let i = 0; i < n; i++) {
+    const nx = next[i];
+    if (nx === -1) continue;
+    const a = nodes[i], b = nodes[nx];
+
+    if (nx === cycleIdx && i === n - 1) {
+      // curved arrow back (cycle tail → entry)
+      drawCurvedArrow(ctx, a, b, cycleIdx, nodes, r, H, W);
+    } else {
+      // straight arrow
+      drawArrow(ctx, a.x + r, a.y, b.x - r, b.y, '#30363d', 1.5);
+    }
+  }
+
+  // "null" label if no cycle
+  if (!hasCycle) {
+    const last = nodes[n - 1];
+    ctx.font = 'bold 12px JetBrains Mono, monospace';
+    ctx.fillStyle = '#8b949e';
+    ctx.textAlign = 'left';
+    ctx.fillText('→ null', last.x + r + 4, last.y + 4);
+  }
+
+  // ── Draw nodes
+  nodes.forEach(nd => {
+    // highlight entry node
+    const isEntry = nd.idx === cycleIdx;
+    ctx.beginPath();
+    ctx.arc(nd.x, nd.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = isEntry ? 'rgba(247,201,72,.12)' : 'rgba(255,255,255,.04)';
+    ctx.fill();
+    ctx.strokeStyle = isEntry ? '#f7c948' : '#30363d';
+    ctx.lineWidth = isEntry ? 2 : 1.5;
+    ctx.stroke();
+
+    // value
+    ctx.font = `bold ${r > 20 ? 14 : 11}px JetBrains Mono, monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#e6edf3';
+    ctx.fillText(nd.val, nd.x, nd.y);
+
+    // index
+    ctx.font = '9px JetBrains Mono, monospace';
+    ctx.fillStyle = '#555';
+    ctx.fillText(nd.idx, nd.x, nd.y + r + 10);
+  });
+
+  // ── Highlight entry label
+  if (hasCycle) {
+    const en = nodes[cycleIdx];
+    ctx.font = 'bold 10px JetBrains Mono, monospace';
+    ctx.fillStyle = '#f7c948';
+    ctx.textAlign = 'center';
+    ctx.fillText('入环点', en.x, en.y - r - 8);
+  }
+
+  // ── Draw slow / fast / ptr pointers
+  const pointerDefs = [
+    { key:'slow', color:'#58a6ff', label:'slow', offset:-r-22 },
+    { key:'fast', color:'#f85149', label:'fast', offset:-r-38 },
+    { key:'ptr',  color:'#3fb950', label:'ptr',  offset:-r-54 },
+  ];
+
+  pointerDefs.forEach(pd => {
+    const val = pd.key === 'slow' ? s.slow : pd.key === 'fast' ? s.fast : s.ptr;
+    if (val < 0 || val >= n) return;
+    if (pd.key === 'ptr' && s.phase < 2) return;
+    const nd = nodes[val];
+
+    // arrow line
+    ctx.beginPath();
+    ctx.moveTo(nd.x, nd.y + pd.offset + 12);
+    ctx.lineTo(nd.x, nd.y - r - 2);
+    ctx.strokeStyle = pd.color;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // arrowhead
+    ctx.beginPath();
+    ctx.moveTo(nd.x - 4, nd.y - r - 8);
+    ctx.lineTo(nd.x + 4, nd.y - r - 8);
+    ctx.lineTo(nd.x, nd.y - r - 1);
+    ctx.fillStyle = pd.color;
+    ctx.fill();
+    // label
+    ctx.font = 'bold 11px JetBrains Mono, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = pd.color;
+    ctx.fillText(pd.label, nd.x, nd.y + pd.offset);
+
+    // pulse ring when slow==fast (meeting)
+    if (pd.key === 'slow' && s.slow === s.fast && s.fast >= 0 && s.phase === 1) {
+      ctx.beginPath();
+      ctx.arc(nd.x, nd.y, r + 6, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(247,201,72,.6)';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+    }
+    // pulse when ptr==slow (found)
+    if (pd.key === 'ptr' && s.ptr === s.slow && s.ptr >= 0 && s.phase >= 2) {
+      ctx.beginPath();
+      ctx.arc(nd.x, nd.y, r + 6, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(63,185,80,.7)';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+    }
+  });
+}
+
+function drawArrow(ctx, x1, y1, x2, y2, color, lw) {
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+  const len = Math.hypot(x2 - x1, y2 - y1);
+  if (len < 4) return;
+  const ax = x2 - 6 * Math.cos(angle), ay = y2 - 6 * Math.sin(angle);
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(ax, ay);
+  ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - 8*Math.cos(angle-0.35), y2 - 8*Math.sin(angle-0.35));
+  ctx.lineTo(x2 - 8*Math.cos(angle+0.35), y2 - 8*Math.sin(angle+0.35));
+  ctx.closePath(); ctx.fillStyle = color; ctx.fill();
+}
+
+function drawCurvedArrow(ctx, from, to, entryIdx, nodes, r, H, W) {
+  const x1 = from.x, y1 = from.y + r;
+  const x2 = to.x,   y2 = to.y   + r;
+  const cy  = H * 0.82;
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.bezierCurveTo(x1, cy, x2, cy, x2, y2 + 2);
+  ctx.strokeStyle = 'rgba(247,201,72,.55)';
+  ctx.lineWidth = 1.8;
+  ctx.stroke();
+  // arrowhead pointing up
+  ctx.beginPath();
+  ctx.moveTo(x2, y2); ctx.lineTo(x2-4, y2+9); ctx.lineTo(x2+4, y2+9);
+  ctx.closePath(); ctx.fillStyle = 'rgba(247,201,72,.7)'; ctx.fill();
+}
+
+// ══════════════════════════════════════════
+//  Step description
+// ══════════════════════════════════════════
+function buildDesc() {
+  const el = document.getElementById('stepDesc');
+  if (!simData || steps.length === 0) {
+    el.innerHTML = '<span style="font-family:\'JetBrains Mono\',monospace;font-size:12px;color:var(--mu)">选择示例，点击 ▶ 开始</span>';
+    return;
+  }
+  const s = simData.steps[stepIdx];
+  const vals = CASES[caseIdx].vals;
+  const cycleIdx = CASES[caseIdx].cycleIdx;
+  const lines = [];
+
+  if (s.desc === 'init') {
+    lines.push(`<span class="sd-tag tag-y">初始化</span><code>slow = head</code>，<code>fast = head</code>，两个指针都指向头节点`);
+    lines.push(`第一阶段：slow 每次走 <span class="hi-b">1 步</span>，fast 每次走 <span class="hi-r">2 步</span>，寻找相遇点`);
+
+  } else if (s.desc === 'walk' && s.phase === 1) {
+    const sVal = s.slow >= 0 ? vals[s.slow] : 'null';
+    const fVal = s.fast >= 0 ? vals[s.fast] : 'null';
+    lines.push(`<span class="sd-tag tag-b">第一阶段</span>第 ${s.iter} 步：<code>slow = slow.next</code> → 节点[${s.slow}](<span class="hi-b">${sVal}</span>)，<code>fast = fast.next.next</code> → 节点[${s.fast}](<span class="hi-r">${fVal}</span>)`);
+    if (s.slow === s.fast) {
+      lines.push(`<span class="hi-y">slow == fast ！在节点[${s.slow}] 相遇</span>，有环！`);
+      lines.push(`进入第二阶段：<code>ptr = head</code>，slow 留在相遇点，同速前进找入环点`);
+    } else {
+      lines.push(`slow ≠ fast，继续走`);
+    }
+
+  } else if (s.desc === 'nocycle') {
+    lines.push(`<span class="sd-tag tag-r">无环</span>fast 到达 <code>null</code>，链表无环，返回 <code>null</code>`);
+
+  } else if (s.desc === 'phase2_start') {
+    lines.push(`<span class="sd-tag tag-p">第二阶段</span>相遇点 = 节点[${s.meet}]，<code>ptr = head</code>（节点[0]），slow 留在节点[${s.slow}]`);
+    lines.push(`由数学推导：<span class="hi-y">a = c</span>，即 head→入环点 的距离 = 相遇点→入环点 的距离`);
+    lines.push(`ptr 和 slow 同速各走一步，它们会在入环点相遇`);
+
+  } else if (s.desc === 'phase2_walk') {
+    const pVal = s.ptr >= 0 ? vals[s.ptr] : '?';
+    const sVal = s.slow >= 0 ? vals[s.slow] : '?';
+    lines.push(`<span class="sd-tag tag-p">第二阶段</span>第 ${s.iter} 步：<code>ptr = ptr.next</code> → 节点[${s.ptr}](<span class="hi-g">${pVal}</span>)，<code>slow = slow.next</code> → 节点[${s.slow}](<span class="hi-b">${sVal}</span>)`);
+    if (s.ptr === s.slow) {
+      lines.push(`<span class="hi-g">ptr == slow ！两者在节点[${s.ptr}] 相遇，这就是入环点！</span>`);
+    } else {
+      lines.push(`ptr ≠ slow，继续走`);
+    }
+
+  } else if (s.desc === 'found') {
+    lines.push(`<span class="sd-tag tag-g">找到！</span>入环点 = 节点[${s.ptr}]，值为 <span class="hi-g">${vals[s.ptr]}</span>`);
+    lines.push(`返回该节点，算法结束`);
+  }
+
+  el.innerHTML = lines.map(l => `<div class="sd-line">${l}</div>`).join('');
+}
+
+// ══════════════════════════════════════════
+//  UI controls
+// ══════════════════════════════════════════
+function updateUI() {
+  const total = simData ? simData.steps.length : 0;
+  document.getElementById('progLabel').textContent = total ? `${stepIdx+1} / ${total}` : '— / —';
+  document.getElementById('prevBtn').disabled  = stepIdx <= 0;
+  document.getElementById('nextBtn').disabled  = !total || stepIdx >= total - 1;
+  document.getElementById('playBtn').disabled  = !total || stepIdx >= total - 1;
+  buildDesc();
+  draw();
+}
+
+function doStep(d) {
+  if (playTimer) { clearInterval(playTimer); playTimer = null; }
+  stepIdx = Math.max(0, Math.min((simData?.steps.length ?? 1) - 1, stepIdx + d));
+  updateUI();
+}
+
+function doReset() {
+  if (playTimer) { clearInterval(playTimer); playTimer = null; }
+  stepIdx = 0;
+  updateUI();
+}
+
+function startPlay() {
+  if (playTimer) { clearInterval(playTimer); playTimer = null; return; }
+  if (!simData || stepIdx >= simData.steps.length - 1) { stepIdx = 0; updateUI(); }
+  playTimer = setInterval(() => {
+    stepIdx++;
+    updateUI();
+    if (stepIdx >= simData.steps.length - 1) { clearInterval(playTimer); playTimer = null; }
+  }, 900);
+}
+
+function loadCase(idx) {
+  if (playTimer) { clearInterval(playTimer); playTimer = null; }
+  caseIdx = idx;
+  const c = CASES[idx];
+  simData = buildSteps(c.vals, c.cycleIdx);
+  steps   = simData.steps;
+  stepIdx = 0;
+  // highlight active button
+  document.querySelectorAll('.ctrl-row .cbtn:not(#playBtn):not(#prevBtn):not(#nextBtn)').forEach((b,i) => {
+    b.classList.toggle('active', i === idx);
+    if (i === idx) { b.style.borderColor='var(--y)'; b.style.color='var(--y)'; }
+    else { b.style.borderColor=''; b.style.color=''; }
+  });
+  updateUI();
+}
+
+function showTab(idx) {
+  document.querySelectorAll('pre.tab').forEach((p,i) => p.classList.toggle('active', i===idx));
+  document.querySelectorAll('.code-tab').forEach((t,i) => t.classList.toggle('active', i===idx));
+}
+
+window.addEventListener('load', () => loadCase(0));
+window.addEventListener('resize', () => draw());
+</script>
+</body>
+</html>

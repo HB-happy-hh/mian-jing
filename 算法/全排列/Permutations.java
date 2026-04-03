@@ -1,5 +1,6 @@
 import java.util.ArrayList;
 import java.util.List;
+import java.util.*;
 
 /**
  * 全排列  LeetCode 46
@@ -29,7 +30,7 @@ import java.util.List;
  */
 public class Permutations {
 
-    public List<List<Integer>> permute(int[] nums) {
+    public static List<List<Integer>> permute(int[] nums) {
         List<List<Integer>> result = new ArrayList<>();
         boolean[] used = new boolean[nums.length]; // 标记哪些数已被使用
         backtrack(nums, used, new ArrayList<>(), result);
@@ -41,7 +42,7 @@ public class Permutations {
     //   path：当前已选择的数字路径
     //   used：标记每个数是否已在 path 中
     // ─────────────────────────────────────────────
-    private void backtrack(int[] nums, boolean[] used,
+    private static void backtrack(int[] nums, boolean[] used,
                            List<Integer> path, List<List<Integer>> result) {
 
         // 终止条件：path 长度等于 nums 长度，一个完整排列产生
@@ -67,17 +68,15 @@ public class Permutations {
     }
 
     public static void main(String[] args) {
-        Permutations sol = new Permutations();
+        Scanner sc = new Scanner(System.in);
+        int n = sc.nextInt();
+        int[] nums = new int[n];
 
-        List<List<Integer>> res = sol.permute(new int[]{1, 2, 3});
-        res.forEach(System.out::println);
-        // [1, 2, 3]
-        // [1, 3, 2]
-        // [2, 1, 3]
-        // [2, 3, 1]
-        // [3, 1, 2]
-        // [3, 2, 1]
+        for(int i = 0 ;i<n; i++){
+            nums[i] = sc.nextInt();
+        }
+        System.out.println(permute(nums));
 
-        System.out.println(sol.permute(new int[]{1}).size()); // 1
+
     }
 }

@@ -15,7 +15,23 @@ package 最大子数组和;
  * 空间复杂度：O(1)
  */
 public class MaxSubArray {
+// 方法一
+    class Solution {
+        public int maxSubArray(int[] nums) {
+    
+            int maxnum = nums[0];
+            int[] dp = new int[nums.length];
+            dp[0] = nums[0];
+    
+            for(int i= 1;i<nums.length; i++){
+                dp[i] = Math.max(nums[i],dp[i-1] + nums[i]);
+                maxnum = Math.max(dp[i],maxnum);
+            }
+            return maxnum;
+        }
+    }
 
+    // 方法二
     public static int maxSubArray(int[] nums) {
         int curSum = nums[0];
         int maxSum = nums[0];

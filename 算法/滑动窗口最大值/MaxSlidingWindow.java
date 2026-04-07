@@ -16,9 +16,9 @@ public class MaxSlidingWindow {
         int[] result = new int[nums.length - k + 1];
         int left = 0;
         int right = k; // 开区间，窗口为 [left, right-1]，共 k 个元素
-
+        int cur = Integer.MIN_VALUE;
         while (right <= nums.length) {
-            int cur = Integer.MIN_VALUE;
+
             for (int i = left; i < right; i++) {
                 cur = Math.max(nums[i], cur);
             }
@@ -94,26 +94,6 @@ public class MaxSlidingWindow {
 
         System.out.print("单调队列: ");
         for (int v : solution.maxSlidingWindow_optimal(nums1, k1)) System.out.print(v + " ");
-        System.out.println();
-
-        // 全负数测试
-        int[] nums2 = {-3, -1, -2};
-        int k2 = 2;
-        // 期望输出：[-1, -1]
-        System.out.print("全负数暴力: ");
-        for (int v : solution.maxSlidingWindow_brute(nums2, k2)) System.out.print(v + " ");
-        System.out.println();
-
-        System.out.print("全负数单调队列: ");
-        for (int v : solution.maxSlidingWindow_optimal(nums2, k2)) System.out.print(v + " ");
-        System.out.println();
-
-        System.out.print("优先队列:   ");
-        for (int v : solution.maxSlidingWindow_pq(nums1, k1)) System.out.print(v + " ");
-        System.out.println();
-
-        System.out.print("全负数优先队列: ");
-        for (int v : solution.maxSlidingWindow_pq(nums2, k2)) System.out.print(v + " ");
         System.out.println();
     }
 }

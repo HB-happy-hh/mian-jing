@@ -33,10 +33,36 @@ public class MaxProfit {
         return maxProfit;
     }
 
+    /**
+     * DP 写法
+     *
+     * dp[i] 表示第 i 天卖出时能获得的最大利润
+     * 转移方程：dp[i] = max(dp[i-1], prices[i] - minPrice)
+     *   - dp[i-1]：今天不卖，利润沿用昨天的最大值
+     *   - prices[i] - minPrice：今天卖出，利润 = 今日价 - 历史最低价
+     *
+     * 时间复杂度：O(n)   空间复杂度：O(n)
+     */
+    public int maxProfitDP(int[] prices) {
+        int n = prices.length;
+        int[] dp = new int[n];   // dp[0] = 0，第0天无法卖出，利润为0
+        int minPrice = prices[0];
+
+        for (int i = 1; i < n; i++) {
+            minPrice = Math.min(minPrice, prices[i]);
+            dp[i] = Math.max(dp[i - 1], prices[i] - minPrice);
+        }
+        return dp[n - 1];
+    }
+
     public static void main(String[] args) {
         MaxProfit sol = new MaxProfit();
-        System.out.println(sol.maxProfit(new int[]{7, 1, 5, 3, 6, 4})); // 5
-        System.out.println(sol.maxProfit(new int[]{7, 6, 4, 3, 1}));    // 0（只跌不涨）
-        System.out.println(sol.maxProfit(new int[]{2, 4, 1}));          // 2
+        int[] a = {7, 1, 5, 3, 6, 4};
+        int[] b = {7, 6, 4, 3, 1};
+        int[] c = {2, 4, 1};
+
+        System.out.println("贪心：" + sol.maxProfit(a)   + "  DP：" + sol.maxProfitDP(a));  // 5  5
+        System.out.println("贪心：" + sol.maxProfit(b)   + "  DP：" + sol.maxProfitDP(b));  // 0  0
+        System.out.println("贪心：" + sol.maxProfit(c)   + "  DP：" + sol.maxProfitDP(c));  // 2  2
     }
 }

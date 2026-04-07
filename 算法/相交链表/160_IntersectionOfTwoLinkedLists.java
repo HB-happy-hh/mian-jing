@@ -53,8 +53,16 @@ class Solution {
         // pA 与 pB 不相等时持续移动
         // 走完自己的链表后，切换到对方链表的头部
         while (pA != pB) {
-            pA = (pA == null) ? headB : pA.next;
-            pB = (pB == null) ? headA : pB.next;
+            if (pA == null) {
+                pA = headB;
+            } else {
+                pA = pA.next;
+            }
+            if (pB == null) {
+                pB = headA;
+            } else {
+                pB = pB.next;
+            }
         }
 
         // pA == pB：要么是交点，要么都是 null（无交点）
